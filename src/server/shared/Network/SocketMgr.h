@@ -115,6 +115,16 @@ public:
         return min;
     }
 
+    uint32 GetSocketConnectionCount() const
+    {
+        uint32 count = 0;
+
+        for (int32 i = 0; i < _threadCount; ++i)
+            count += _threads[i].GetConnectionCount();
+
+        return count;
+    }
+
     std::pair<tcp::socket*, uint32> GetSocketForAccept()
     {
         uint32 threadIndex = SelectThreadWithMinConnections();
