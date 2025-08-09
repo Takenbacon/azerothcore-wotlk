@@ -23,6 +23,8 @@
 #include "IoContext.h"
 #include "Log.h"
 #include "Socket.h"
+#include "Timer.h"
+#include "UpdateTime.h"
 #include <boost/asio/ip/tcp.hpp>
 #include <boost/asio/steady_timer.hpp>
 #include <atomic>
@@ -38,7 +40,7 @@ class NetworkThread
 {
 public:
     NetworkThread() :
-        _ioContext(1), _acceptSocket(_ioContext), _updateTimer(_ioContext), _proxyHeaderReadingEnabled(false) { }
+        _ioContext(1), _acceptSocket(_ioContext), _updateTimer(_ioContext), _proxyHeaderReadingEnabled(false), _lastTimeInMS(getMSTime()){ }
 
     virtual ~NetworkThread()
     {
@@ -94,6 +96,18 @@ public:
     tcp::socket* GetSocketForAccept() { return &_acceptSocket; }
 
     void EnableProxyProtocol() { _proxyHeaderReadingEnabled = true; }
+
+    uint32 const GetLastUpdateTime()
+    {
+        std::lock_guard<std::mutex> guard(_updateTimeMutex);
+        return _updateTimeStats.GetLastUpdateTime();
+    }
+
+    uint32 const GetAverageUpdateTime()
+    {
+        std::lock_guard<std::mutex> guard(_updateTimeMutex);
+        return _updateTimeStats.GetAverageUpdateTime();
+    }
 
 protected:
     virtual void SocketAdded(std::shared_ptr<SocketType> /*sock*/) { }
@@ -193,6 +207,14 @@ protected:
         if (_stopped)
             return;
 
+        uint32 const currTime = getMSTime();;
+        uint32 const diff = getMSTimeDiff(_lastTimeInMS, currTime);
+        _lastTimeInMS = currTime;
+        {
+            std::lock_guard<std::mutex> guard(_updateTimeMutex);
+            _updateTimeStats.UpdateWithDiff(diff);
+        }
+
         _updateTimer.expires_at(std::chrono::steady_clock::now() + std::chrono::milliseconds(1));
         _updateTimer.async_wait([this](boost::system::error_code const&) { Update(); });
 
@@ -233,6 +255,10 @@ private:
     boost::asio::steady_timer _updateTimer;
 
     bool _proxyHeaderReadingEnabled;
+
+    UpdateTime _updateTimeStats;
+    uint32 _lastTimeInMS;
+    std::mutex _updateTimeMutex;
 };
 
 #endif // NetworkThread_h__

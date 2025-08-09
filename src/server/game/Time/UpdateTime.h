@@ -29,6 +29,8 @@ class AC_GAME_API UpdateTime
 using DiffTableArray = std::array<uint32, AVG_DIFF_COUNT>;
 
 public:
+    UpdateTime();
+
     uint32 GetAverageUpdateTime() const;
     uint32 GetTimeWeightedAverageUpdateTime() const;
     uint32 GetMaxUpdateTime() const;
@@ -42,7 +44,6 @@ public:
     void RecordUpdateTimeReset();
 
 protected:
-    UpdateTime();
 
     void SortUpdateTimeDataTable();
 

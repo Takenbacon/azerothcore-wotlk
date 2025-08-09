@@ -131,6 +131,13 @@ public:
         return { _threads[threadIndex].GetSocketForAccept(), threadIndex };
     }
 
+    template<typename Worker>
+    void DoForAllNetworkThreads(Worker&& worker)
+    {
+        for (uint32 i = 0; i < _threadCount; ++i)
+            worker(&_threads[i]);
+    }
+
 protected:
     SocketMgr() = default;
 

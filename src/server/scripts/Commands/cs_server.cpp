@@ -259,7 +259,6 @@ public:
         uint32 activeSessionCount = sWorldSessionMgr->GetActiveSessionCount();
         uint32 queuedSessionCount = sWorldSessionMgr->GetQueuedSessionCount();
         uint32 connPeak = sWorldSessionMgr->GetMaxActiveSessionCount();
-        uint32 socketConnectionCount = sWorldSocketMgr.GetSocketConnectionCount();
 
         handler->PSendSysMessage("{}", GitRevision::GetFullVersion());
         if (!queuedSessionCount)
@@ -268,7 +267,6 @@ public:
             handler->PSendSysMessage("Connected players: {}. Characters in world: {}. Queue: {}.", activeSessionCount, playerCount, queuedSessionCount);
 
         handler->PSendSysMessage("Connection peak: {}.", connPeak);
-        handler->PSendSysMessage("Network socket connection count: {}.", socketConnectionCount);
         handler->PSendSysMessage(LANG_UPTIME, secsToTimeString(GameTime::GetUptime().count()));
         handler->PSendSysMessage("Update time diff: {}ms. Last {} diffs summary:", sWorldUpdateTime.GetLastUpdateTime(), sWorldUpdateTime.GetDatasetSize());
         handler->PSendSysMessage("|- Mean: {}ms", sWorldUpdateTime.GetAverageUpdateTime());

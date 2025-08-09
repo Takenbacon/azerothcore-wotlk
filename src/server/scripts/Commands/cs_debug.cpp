@@ -32,6 +32,8 @@
 #include "ScriptMgr.h"
 #include "Transport.h"
 #include "Warden.h"
+#include "WorldSocket.h"
+#include "WorldSocketMgr.h"
 #include <fstream>
 #include <set>
 
@@ -99,7 +101,8 @@ public:
             { "objectcount",    HandleDebugObjectCountCommand,         SEC_ADMINISTRATOR, Console::Yes},
             { "dummy",          HandleDebugDummyCommand,               SEC_ADMINISTRATOR, Console::No },
             { "mapdata",        HandleDebugMapDataCommand,             SEC_ADMINISTRATOR, Console::No },
-            { "boundary",       HandleDebugBoundaryCommand,            SEC_ADMINISTRATOR, Console::No }
+            { "boundary",       HandleDebugBoundaryCommand,            SEC_ADMINISTRATOR, Console::No },
+            { "networkstats",   HandleDebugNetworkStatsCommand,        SEC_ADMINISTRATOR, Console::No }
         };
         static ChatCommandTable commandTable =
         {
@@ -1400,6 +1403,23 @@ public:
         int32 errMsg = target->AI()->VisualizeBoundary(duration, player, fill.has_value(), checkZ.has_value());
         if (errMsg > 0)
             handler->PSendSysMessage(errMsg);
+
+        return true;
+    }
+
+    static bool HandleDebugNetworkStatsCommand(ChatHandler* handler)
+    {
+        Player* player = handler->GetPlayer();
+        if (!player)
+            return false;
+
+        uint32 threadId = 0;
+        sWorldSocketMgr.DoForAllNetworkThreads([&threadId, handler](NetworkThread<WorldSocket>* networkThread)
+        {
+            handler->PSendSysMessage("Thread {} Last Diff {} AVG Diff {} Connections {}",
+                threadId, networkThread->GetLastUpdateTime(), networkThread->GetAverageUpdateTime(), networkThread->GetConnectionCount());
+            ++threadId;
+        });
 
         return true;
     }
