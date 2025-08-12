@@ -99,6 +99,9 @@ void EncryptableAndCompressiblePacket::CompressIfNeeded()
     if (!NeedsCompression())
         return;
 
+    if (!sWorld->getIntConfig(CONFIG_COMPRESSION))
+        return;
+
     uint32 pSize = size();
 
     uint32 destsize = compressBound(pSize);

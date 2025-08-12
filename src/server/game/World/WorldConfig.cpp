@@ -141,7 +141,7 @@ void WorldConfig::BuildConfigCache()
 
     SetConfigValue<bool>(CONFIG_DURABILITY_LOSS_IN_PVP, "DurabilityLoss.InPvP", false);
 
-    SetConfigValue<uint32>(CONFIG_COMPRESSION, "Compression", 1, ConfigValueCache::Reloadable::Yes, [](uint32 const& value) { return value > 0 && value < 10; }, "> 0 && < 10");
+    SetConfigValue<uint32>(CONFIG_COMPRESSION, "Compression", 1, ConfigValueCache::Reloadable::Yes, [](uint32 const& value) { return value >= 0 && value < 10; }, ">= 0 && < 10");
 
     SetConfigValue<bool>(CONFIG_ADDON_CHANNEL, "AddonChannel", true);
     SetConfigValue<bool>(CONFIG_CLEAN_CHARACTER_DB, "CleanCharacterDB", false);
