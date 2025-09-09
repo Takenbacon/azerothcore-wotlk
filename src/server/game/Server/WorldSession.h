@@ -1073,12 +1073,9 @@ public:                                                 // opcodes handlers
 
     void HandleCancelTempEnchantmentOpcode(WorldPackets::Item::CancelTempEnchantment& packet);
 
-    void HandleItemRefundInfoRequest(WorldPacket& recvData);
-    void HandleItemRefund(WorldPacket& recvData);
+    void HandleItemRefundInfoRequest(WorldPackets::Item::ItemRefundInfo& packet);
+    void HandleItemRefund(WorldPackets::Item::ItemRefund& packet);
 
-    void HandleChannelVoiceOnOpcode(WorldPacket& recvData);
-    void HandleVoiceSessionEnableOpcode(WorldPacket& recvData);
-    void HandleSetActiveVoiceChannel(WorldPacket& recvData);
     void HandleSetTaxiBenchmarkOpcode(WorldPacket& recvData);
 
     // Guild Bank
