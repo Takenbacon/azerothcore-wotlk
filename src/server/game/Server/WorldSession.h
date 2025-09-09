@@ -48,6 +48,7 @@ class Player;
 class Quest;
 class SpellCastTargets;
 class Unit;
+class VoiceChatChannel;
 class Warden;
 class WorldPacket;
 class WorldSocket;
@@ -188,6 +189,20 @@ namespace WorldPackets
         class CancelTempEnchantment;
         class ItemRefundInfo;
         class ItemRefund;
+    }
+
+    namespace VoiceChat
+    {
+        class VoiceSessionEnable;
+        class ChannelVoiceOn;
+        class SetActiveVoiceChannel;
+        class ChannelVoiceOff;
+        class AddVoiceIgnore;
+        class DeleteVoiceIgnore;
+        class PartySilence;
+        class PartyUnsilence;
+        class ChannelSilence;
+        class ChannelUnsilence;
     }
 }
 
@@ -574,6 +589,24 @@ public:
     // Recruit-A-Friend Handling
     uint32 GetRecruiterId() const { return recruiterId; }
     bool IsARecruiter() const { return isRecruiter; }
+
+    // Voice Chat
+    bool IsVoiceChatEnabled() const { return _voiceEnabled; }
+    bool IsMicEnabled() const { return _micEnabled; }
+    uint16 GetCurrentVoiceChannelId() const { return _currentVoiceChannel; }
+    void SetCurrentVoiceChannelId(uint32 id) { _currentVoiceChannel = id; }
+    static void HandleAddMutedOpcodeCallBack(QueryResult* result, uint32);
+    void HandleAddVoiceIgnoreOpcode(WorldPackets::VoiceChat::AddVoiceIgnore& packet);
+    void HandleDeleteVoiceIgnoreOpcode(WorldPackets::VoiceChat::DeleteVoiceIgnore& packet);
+    void HandleChannelSilenceOpcode(WorldPackets::VoiceChat::ChannelSilence& packet);
+    void HandleChannelUnsilenceOpcode(WorldPackets::VoiceChat::ChannelUnsilence& packet);
+    void HandlePartySilenceOpcode(WorldPackets::VoiceChat::PartySilence& packet);
+    void HandlePartyUnsilenceOpcode(WorldPackets::VoiceChat::PartyUnsilence& packet);
+    void HandleChannelVoiceOnOpcode(WorldPackets::VoiceChat::ChannelVoiceOn& packet);
+    void HandleChannelVoiceOffOpcode(WorldPackets::VoiceChat::ChannelVoiceOff& packet);
+    void HandleVoiceSessionEnableOpcode(WorldPackets::VoiceChat::VoiceSessionEnable& packet);
+    void HandleSetActiveVoiceChannelOpcode(WorldPackets::VoiceChat::SetActiveVoiceChannel& packet);
+    void SetActiveVoiceChannel(VoiceChatChannel* voiceChannel, VoiceChatChannel* currentChannel, Player* player);
 
     // Packets cooldown
     time_t GetCalendarEventCreationCooldown() const { return _calendarEventCreationCooldown; }
@@ -1040,8 +1073,8 @@ public:                                                 // opcodes handlers
 
     void HandleCancelTempEnchantmentOpcode(WorldPackets::Item::CancelTempEnchantment& packet);
 
-    void HandleItemRefundInfoRequest(WorldPackets::Item::ItemRefundInfo& packet);
-    void HandleItemRefund(WorldPackets::Item::ItemRefund& packet);
+    void HandleItemRefundInfoRequest(WorldPacket& recvData);
+    void HandleItemRefund(WorldPacket& recvData);
 
     void HandleChannelVoiceOnOpcode(WorldPacket& recvData);
     void HandleVoiceSessionEnableOpcode(WorldPacket& recvData);
@@ -1224,6 +1257,11 @@ private:
     bool _kicked;
     // Packets cooldown
     time_t _calendarEventCreationCooldown;
+
+    // Voice Chat
+    bool _micEnabled;
+    bool _voiceEnabled;
+    uint16 _currentVoiceChannel;
 
     // Addon Message count for Metric
     std::atomic<uint32> _addonMessageReceiveCount;
