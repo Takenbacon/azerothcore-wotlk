@@ -15,27 +15,29 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __VoiceChatSocket_H__
-#define __VoiceChatSocket_H__
+#ifndef __ChannelMgr_H__
+#define __ChannelMgr_H__
 
-#include "TcpSocket.h"
-#include "VoiceChatDefines.h"
-#include <boost/asio/ip/tcp.hpp>
+#include "Define.h"
 
-using boost::asio::ip::tcp;
+class InternalSession;
 
-class VoiceChatSocket : public TcpSocket<VoiceChatSocket>
+class ChannelMgr
 {
 public:
-    explicit VoiceChatSocket(tcp::socket&& socket);
+    static ChannelMgr& Instance()
+    {
+        static ChannelMgr instance;
+        return instance;
+    }
 
-    void Start() override;
-    bool Update() override;
-    void SendPacket(VoiceChatServerPacket const& pkt);
+    void CreateChannel(InternalSession* session, uint8 type, uint32 requestId);
+    void AddMember(InternalSession* session, uint16 channelId, uint8 memberId);
+    void VoiceMember(InternalSession* session, uint16 channelId, uint8 memberId);
+private:
 
-protected:
-    bool ReadHeaderHandler();
-    ReadDataHandlerResult ReadDataHandler();
 };
+
+#define sChannelMgr ChannelMgr::Instance()
 
 #endif

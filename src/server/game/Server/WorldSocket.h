@@ -21,7 +21,7 @@
 #include "AuthCrypt.h"
 #include "Common.h"
 #include "MPSCQueue.h"
-#include "Socket.h"
+#include "TcpSocket.h"
 #include "Util.h"
 #include "WorldPacket.h"
 #include "WorldSession.h"
@@ -67,9 +67,9 @@ struct ClientPktHeader
 
 struct AuthSession;
 
-class AC_GAME_API WorldSocket : public Socket<WorldSocket>
+class AC_GAME_API WorldSocket : public TcpSocket<WorldSocket>
 {
-    typedef Socket<WorldSocket> BaseSocket;
+    typedef TcpSocket<WorldSocket> BaseSocket;
 
 public:
     WorldSocket(tcp::socket&& socket);
@@ -87,16 +87,7 @@ public:
 
 protected:
     void OnClose() override;
-    void ReadHandler() override;
     bool ReadHeaderHandler();
-
-    enum class ReadDataHandlerResult
-    {
-        Ok = 0,
-        Error = 1,
-        WaitingForQuery = 2
-    };
-
     ReadDataHandlerResult ReadDataHandler();
 
 private:
@@ -126,8 +117,6 @@ private:
     WorldSession* _worldSession;
     bool _authed;
 
-    MessageBuffer _headerBuffer;
-    MessageBuffer _packetBuffer;
     MPSCQueue<EncryptableAndCompressiblePacket, &EncryptableAndCompressiblePacket::SocketQueueLink> _bufferQueue;
     std::size_t _sendBufferSize;
 

@@ -54,7 +54,7 @@ void WorldSession::HandleVoiceSessionEnableOpcode(WorldPackets::VoiceChat::Voice
     else
     {
         // send available voice channels
-        if (_player->IsInWorld() && !_voiceEnabled)
+        if (/*_player->IsInWorld() && */!_voiceEnabled)
         {
             // enable it here to allow joining channels
             _voiceEnabled = packet.VoiceEnabled;

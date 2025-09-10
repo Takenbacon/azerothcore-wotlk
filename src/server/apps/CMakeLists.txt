@@ -30,6 +30,10 @@ if (APPS_BUILD MATCHES "-only")
   if (APPS_BUILD STREQUAL "world-only")
     list(APPEND BUILD_APPS_WHITELIST worldserver)
   endif()
+  
+    if (APPS_BUILD STREQUAL "voice-only")
+    list(APPEND BUILD_APPS_WHITELIST voiceserver)
+  endif()
 endif()
 
 # Set the SCRIPTS_${BUILD_APP} variables from the
@@ -127,10 +131,11 @@ foreach(APPLICATION_NAME ${APPLICATIONS_BUILD_LIST})
     PRIVATE
       acore-core-interface)
 
-  if (${APP_PROJECT_NAME} MATCHES "authserver")
+  if (${APP_PROJECT_NAME} MATCHES "authserver" OR ${APP_PROJECT_NAME} MATCHES "voiceserver")
     target_link_libraries(${APP_PROJECT_NAME}
       PUBLIC
-        shared)
+        shared
+        services)
   elseif(${APP_PROJECT_NAME} MATCHES "worldserver")
     target_link_libraries(${APP_PROJECT_NAME}
       PUBLIC

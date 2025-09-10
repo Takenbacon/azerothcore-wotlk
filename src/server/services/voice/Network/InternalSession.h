@@ -15,23 +15,29 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __VoiceChatSocket_H__
-#define __VoiceChatSocket_H__
+#ifndef _INTERNAL_SESSION_H_
+#define _INTERNAL_SESSION_H_
 
+#include "ByteBuffer.h"
 #include "TcpSocket.h"
-#include "VoiceChatDefines.h"
 #include <boost/asio/ip/tcp.hpp>
+
+class VoiceChatServerPacket;
 
 using boost::asio::ip::tcp;
 
-class VoiceChatSocket : public TcpSocket<VoiceChatSocket>
+class InternalSession : public TcpSocket<InternalSession>
 {
+    typedef TcpSocket<InternalSession> InternalSocket;
+
 public:
-    explicit VoiceChatSocket(tcp::socket&& socket);
+    InternalSession(tcp::socket&& socket);
 
     void Start() override;
+    void OnClose() override;
     bool Update() override;
-    void SendPacket(VoiceChatServerPacket const& pkt);
+
+    void SendPacket(VoiceChatServerPacket const& packet);
 
 protected:
     bool ReadHeaderHandler();

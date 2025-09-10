@@ -86,6 +86,7 @@ public:
           // If connection succeeded, create your SocketType with the connected socket
           auto connection = std::make_shared<SocketType>(std::move(*rawSocket));
           connection->Start();
+          connection->SetNoDelay(true);
       }
       else
       {

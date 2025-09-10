@@ -11,6 +11,7 @@
 #
 
 add_subdirectory(apps)
+add_subdirectory(services)
 
 if ((APPS_BUILD AND NOT APPS_BUILD STREQUAL "none") OR BUILD_TOOLS_DB_IMPORT)
   add_subdirectory(database)

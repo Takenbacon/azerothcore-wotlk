@@ -133,6 +133,7 @@ void VoiceChatMgr::VoiceSocketThread()
                 {
                     LOG_INFO("voice-chat", "Socket requested successfully, starting socket operations");
                     voiceChatSocket->Start();
+                    voiceChatSocket->SetNoDelay(true);
 
                     // Run the IO context - this will block until disconnection
                     ioContext.run();
@@ -232,40 +233,33 @@ void VoiceChatMgr::Update(uint32 diff)
     if (currentSocket)
         currentSocket->Update();
 
-    // Process received packets
-    std::deque<std::unique_ptr<VoiceChatServerPacket>> recvQueueCopy;
     {
-        std::lock_guard<std::mutex> guard(_recvQueueLock);
-        std::swap(recvQueueCopy, _recvQueue);
-    }
-
-    while (currentSocket && currentSocket->IsOpen() && !recvQueueCopy.empty())
-    {
-        auto const packet = std::move(recvQueueCopy.front());
-        recvQueueCopy.pop_front();
-
-        try
+        std::unique_ptr<VoiceChatServerPacket> packet;
+        while (_recvQueue.next(packet))
         {
-            LOG_DEBUG("voice-chat", "Processing packet from server, opcode: {}", packet->GetOpcode());
-            HandleVoiceChatServerPacket(*packet);
-        }
-        catch (ByteBufferException const&)
-        {
-            LOG_ERROR("voice-chat", "ByteBufferException processing packet");
-            ProcessByteBufferException(*packet);
+            try
+            {
+                LOG_DEBUG("voice-chat", "Processing packet from server, opcode: {}", packet->GetOpcode());
+                HandleVoiceChatServerPacket(*packet);
+            }
+            catch (ByteBufferException const&)
+            {
+                LOG_ERROR("voice-chat", "ByteBufferException processing packet");
+                ProcessByteBufferException(*packet);
+            }
         }
     }
 
     if (_state == VOICECHAT_DISCONNECTED)
         return;
 
-    if (diff < _lastUpdateTimer)
+    /*if (diff < _lastUpdateTimer)
     {
         _lastUpdateTimer -= diff;
         return;
     }
     else
-        _lastUpdateTimer = 1 * SECOND * IN_MILLISECONDS;
+        _lastUpdateTimer = 1 * SECOND * IN_MILLISECONDS;*/
 
     // Handle new socket assignment
     if (!_requestSocket.expired())
@@ -353,8 +347,8 @@ void VoiceChatMgr::Update(uint32 diff)
             data << uint32(0);
             currentSocket->SendPacket(data);
         }
-
-        _nextPingTimer -= diff;
+        else
+            _nextPingTimer -= diff;
 
         if (_lastPongElapsed >= 15 * SECOND * IN_MILLISECONDS)
         {
@@ -529,8 +523,7 @@ bool VoiceChatMgr::RequestNewSocket(VoiceChatSocket* socket)
 // Add an incoming packet to the queue
 void VoiceChatMgr::QueuePacket(std::unique_ptr<VoiceChatServerPacket> new_packet)
 {
-    std::lock_guard<std::mutex> guard(_recvQueueLock);
-    _recvQueue.push_back(std::move(new_packet));
+    _recvQueue.emplace_back(std::move(new_packet));
 }
 
 void VoiceChatMgr::ProcessByteBufferException(VoiceChatServerPacket const& packet)

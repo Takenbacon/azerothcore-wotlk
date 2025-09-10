@@ -15,27 +15,32 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __VoiceChatSocket_H__
-#define __VoiceChatSocket_H__
+#ifndef VoiceServer_h_
+#define VoiceServer_h_
 
-#include "TcpSocket.h"
-#include "VoiceChatDefines.h"
-#include <boost/asio/ip/tcp.hpp>
+#include <AsioHacksFwd.h>
+#include <Define.h>
+#include "UdpSocket.h"
+#include <boost/asio/ip/udp.hpp>
 
-using boost::asio::ip::tcp;
+using boost::asio::ip::udp;
 
-class VoiceChatSocket : public TcpSocket<VoiceChatSocket>
+class VoiceServer
 {
 public:
-    explicit VoiceChatSocket(tcp::socket&& socket);
+    static VoiceServer& Instance()
+    {
+        static VoiceServer instance;
+        return instance;
+    }
 
-    void Start() override;
-    bool Update() override;
-    void SendPacket(VoiceChatServerPacket const& pkt);
+    bool Start(Acore::Asio::IoContext& ioContext, std::string const& bindIp, uint16 const port);
+    void Run();
 
-protected:
-    bool ReadHeaderHandler();
-    ReadDataHandlerResult ReadDataHandler();
+private:
+    std::unique_ptr<UdpSocket> _socket;
 };
+
+#define sVoiceServer VoiceServer::Instance()
 
 #endif

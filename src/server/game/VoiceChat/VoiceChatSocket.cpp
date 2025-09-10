@@ -18,20 +18,15 @@
 #include "VoiceChatSocket.h"
 #include "Log.h"
 #include "VoiceChatDefines.h"
+#include "VoiceChatSharedDefines.h"
 #include "VoiceChatMgr.h"
 #include <iomanip>
 
-struct VoiceChatServerPktHeader {
-    uint16 cmd;
-    uint16 size;
-
-    char const* data() const { return reinterpret_cast<const char *>(this); }
-
-    std::size_t headerSize() const { return sizeof(VoiceChatServerPktHeader); }
-};
-
 VoiceChatSocket::VoiceChatSocket(tcp::socket &&socket)
-    : Socket<VoiceChatSocket>(std::move(socket)) {}
+    : TcpSocket<VoiceChatSocket>(std::move(socket))
+{
+    _headerBuffer.Resize(sizeof(VoiceChatServerPktHeader));
+}
 
 void VoiceChatSocket::Start()
 {
@@ -43,111 +38,60 @@ void VoiceChatSocket::Start()
 
 bool VoiceChatSocket::Update()
 {
-    if (!Socket<VoiceChatSocket>::Update())
+    if (!TcpSocket<VoiceChatSocket>::Update())
         return false;
 
     return true;
 }
 
-void VoiceChatSocket::SendPacket(VoiceChatServerPacket pct)
+void VoiceChatSocket::SendPacket(VoiceChatServerPacket const& pkt)
 {
     if (!IsOpen())
         return;
 
     VoiceChatServerPktHeader header;
-    header.cmd = pct.GetOpcode();
-    header.size = static_cast<uint8>(pct.size());
+    header.size = sizeof(header.cmd) + pkt.size();
+    header.cmd = pkt.GetOpcode();
 
-    MessageBuffer buffer(header.headerSize() + pct.size());
-
+    MessageBuffer buffer(header.headerSize() + pkt.size());
     buffer.Write(header.data(), header.headerSize());
-
-    if (pct.size() > 0)
-        buffer.Write(pct.contents(), pct.size());
-
-    if (sLog->ShouldLog("session", LogLevel::LOG_LEVEL_DEBUG))
-    {
-        LOG_DEBUG("session", "Sending voice socket packet: opcode={}, size={}", header.cmd, header.size);
-
-        std::stringstream ss;
-        const uint8* data = (const uint8*)buffer.GetReadPointer();
-        for (size_t i = 0; i < buffer.GetActiveSize(); ++i)
-            ss << std::hex << std::setw(2) << std::setfill('0') << (int)data[i] << " ";
-        LOG_DEBUG("session", "Voice socket packet data: {}", ss.str());
-    }
+    if (!pkt.empty())
+        buffer.Write(pkt.contents(), pkt.size());
 
     QueuePacket(std::move(buffer));
 }
 
-bool VoiceChatSocket::HandlePing()
+bool VoiceChatSocket::ReadHeaderHandler()
 {
-    // Always handle ping packet
+    ASSERT(_headerBuffer.GetActiveSize() == sizeof(VoiceChatServerPktHeader));
+
+    VoiceChatServerPktHeader* header = reinterpret_cast<VoiceChatServerPktHeader*>(_headerBuffer.GetReadPointer());
+    /*EndianConvertReverse(header->size);
+    EndianConvert(header->cmd);*/
+
+    if (!header->IsValidSize() || !header->IsValidOpcode())
+    {
+        LOG_ERROR("network", "InternalSession::ReadHeaderHandler(): client {} sent malformed packet (size: {}, cmd: {})",
+            GetRemoteIpAddress().to_string(), header->size, header->cmd);
+
+        return false;
+    }
+
+    header->size -= sizeof(header->cmd);
+    _packetBuffer.Resize(header->size);
+
     return true;
 }
 
-bool VoiceChatSocket::ProcessIncomingData()
+ReadDataHandlerResult VoiceChatSocket::ReadDataHandler()
 {
-    try
-    {
-        LOG_DEBUG("session", "VoiceChatSocket::ProcessIncomingData() Read Pong packet sent from server"); // Log info for pong packets
+    VoiceChatServerPktHeader* header = reinterpret_cast<VoiceChatServerPktHeader*>(_headerBuffer.GetReadPointer());
+    VoiceChatServerOpcodes opcode = static_cast<VoiceChatServerOpcodes>(header->cmd);
 
-        if (!IsOpen())
-            return false;
+    LOG_TRACE("network", "Received opcode {} size {}", opcode, header->size);
 
-        // Read header
-        if (GetReadBuffer().GetActiveSize() < sizeof(VoiceChatServerPktHeader))
-        {
-            LOG_ERROR("session", "Not enough data for header ({} < {})", GetReadBuffer().GetActiveSize(), sizeof(VoiceChatServerPktHeader));
-            return false;
-        }
+    std::unique_ptr<VoiceChatServerPacket> packet = std::make_unique<VoiceChatServerPacket>(opcode, std::move(_packetBuffer));
+    sVoiceChatMgr.QueuePacket(std::move(packet));
 
-        VoiceChatServerPktHeader header;
-        std::memcpy(&header, GetReadBuffer().GetReadPointer(), sizeof(header));
-        GetReadBuffer().ReadCompleted(sizeof(header));
-
-        LOG_DEBUG("session", "Processing voice socket packet: cmd={}, size={}", header.cmd, header.size);
-
-        if (header.size < 2 || header.size > 0x2800)
-        {
-            LOG_ERROR("session", "VoiceChatServerSocket::ProcessIncomingData: client sent malformed packet size = {} , cmd = {}", header.size, header.cmd);
-            CloseSocket();
-            return false;
-        }
-
-        // Read payload
-        if (GetReadBuffer().GetActiveSize() < header.size)
-            return false;
-
-        std::vector<uint8> payload(header.size);
-        std::memcpy(payload.data(), GetReadBuffer().GetReadPointer(), header.size);
-        GetReadBuffer().ReadCompleted(header.size);
-
-        // Pass to VoiceChatMgr
-        auto packet = std::make_unique<VoiceChatServerPacket>(
-            (VoiceChatServerOpcodes)header.cmd, header.size);
-        packet->append(payload.data(), payload.size());
-        sVoiceChatMgr.QueuePacket(std::move(packet));
-
-        return true;
-    }
-    catch (const std::exception& e)
-    {
-        LOG_ERROR("voice-chat", "Exception in ProcessIncomingData: {}", e.what());
-        CloseSocket();
-        return false;
-    }
-}
-
-void VoiceChatSocket::ReadHandler()
-{
-    LOG_DEBUG("session", "ReadHandler called with {} bytes available", GetReadBuffer().GetActiveSize());
-
-    MessageBuffer &packet = GetReadBuffer();
-    while (packet.GetActiveSize() > 0) // Loop while there's data in the buffer
-    {
-        if (!ProcessIncomingData()) // Process data until buffer is exhausted
-            break;                  // Break if processing fails
-    }
-
-    AsyncRead(); // Queue the next async read
+    return ReadDataHandlerResult::Ok;
 }

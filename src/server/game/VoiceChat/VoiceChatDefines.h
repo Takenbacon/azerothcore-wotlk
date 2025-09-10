@@ -20,26 +20,10 @@
 
 #include "ObjectGuid.h"
 #include "SharedDefines.h"
+#include "VoiceChatSharedDefines.h"
 
 #define HIGH_VOICE_PRIORITY 0x80 // Magic number, ask Burlex
 #define LOW_VOICE_PRIORITY 0xC8 // Magic number, ask Burlex
-
-enum VoiceChatServerOpcodes
-{
-    VOICECHAT_NULL_ACTION          = 0,
-    VOICECHAT_CMSG_CREATE_CHANNEL  = 1,
-    VOICECHAT_SMSG_CHANNEL_CREATED = 2,
-    VOICECHAT_CMSG_ADD_MEMBER      = 3,
-    VOICECHAT_CMSG_REMOVE_MEMBER   = 4,
-    VOICECHAT_CMSG_VOICE_MEMBER    = 5,
-    VOICECHAT_CMSG_DEVOICE_MEMBER  = 6,
-    VOICECHAT_CMSG_MUTE_MEMBER     = 7,
-    VOICECHAT_CMSG_UNMUTE_MEMBER   = 8,
-    VOICECHAT_CMSG_DELETE_CHANNEL  = 9,
-    VOICECHAT_CMSG_PING            = 10,
-    VOICECHAT_SMSG_PONG            = 11,
-    VOICECHAT_NUM_OPCODES          = 12,
-};
 
 struct VoiceChatChannelRequest
 {
@@ -104,33 +88,6 @@ struct VoiceChatMember
     inline void SetPriority(uint8 newPriority) { Priority = newPriority; }
     inline void SetHighPriority() { SetPriority(HIGH_VOICE_PRIORITY); }
     inline void SetLowPriority() { SetPriority(LOW_VOICE_PRIORITY); }
-};
-
-class VoiceChatServerPacket : public ByteBuffer
-{
-public:
-    // just container for later use
-    VoiceChatServerPacket() : ByteBuffer(0), _opcode(VOICECHAT_NULL_ACTION)
-    {
-    }
-    explicit VoiceChatServerPacket(VoiceChatServerOpcodes opcode, size_t res = 200) : ByteBuffer(res), _opcode(opcode) { }
-    // copy constructor
-    VoiceChatServerPacket(const VoiceChatServerPacket& packet) : ByteBuffer(packet), _opcode(packet._opcode)
-    {
-    }
-
-    void Initialize(VoiceChatServerOpcodes opcode, size_t newres = 200)
-    {
-        clear();
-        reserve(newres);
-        _opcode = opcode;
-    }
-
-    VoiceChatServerOpcodes GetOpcode() const { return _opcode; }
-    void SetOpcode(VoiceChatServerOpcodes opcode) { _opcode = opcode; }
-
-protected:
-    VoiceChatServerOpcodes _opcode;
 };
 
 struct VoiceChatStatistics

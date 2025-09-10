@@ -202,9 +202,7 @@ private:
 
     uint32 _lastUpdateTimer;
 
-    // Thread safety mechanisms
-    std::mutex _recvQueueLock;
-    std::deque<std::unique_ptr<VoiceChatServerPacket>> _recvQueue;
+    LockedQueue<std::unique_ptr<VoiceChatServerPacket>> _recvQueue;
 
     std::unique_ptr<AsyncConnector<VoiceChatSocket>> _connector;
 
