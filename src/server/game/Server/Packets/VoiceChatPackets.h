@@ -20,6 +20,7 @@
 
 #include "ObjectGuid.h"
 #include "Packet.h"
+#include "VoiceChatDefines.h"
 
 namespace WorldPackets
 {
@@ -135,7 +136,7 @@ namespace WorldPackets
             WorldPacket const* Write() override;
 
             uint64 SessionId = 0;
-            uint8 Type = 0;
+            VoiceChatChannelType Type;
             std::string_view ChannelName = "";
             ObjectGuid PlayerGuid;
         };

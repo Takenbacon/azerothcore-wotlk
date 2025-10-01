@@ -86,7 +86,6 @@
 #include "Util.h"
 #include "VMapFactory.h"
 #include "VMapMgr2.h"
-#include "VoiceChatMgr.h"
 #include "Warden.h"
 #include "WardenCheckMgr.h"
 #include "WaypointMovementGenerator.h"
@@ -1264,10 +1263,10 @@ void World::Update(uint32 diff)
         ProcessQueryCallbacks();
     }
 
-    {
+    /*{
         METRIC_TIMER("world_update_time", METRIC_TAG("type", "Voice chat update"));
         sVoiceChatMgr.Update(diff);
-    }
+    }*/
 
     /// <li> Update uptime table
     if (_timers[WUPDATE_UPTIME].Passed())

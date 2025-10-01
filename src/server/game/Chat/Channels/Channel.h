@@ -18,8 +18,8 @@
 #ifndef _CHANNEL_H
 #define _CHANNEL_H
 
+#include "VoiceChatDefines.h"
 #include "WorldPacket.h"
-#include "WorldSession.h"
 #include <string>
 
 class Player;
@@ -104,15 +104,15 @@ enum ChannelDBCFlags
 
 enum ChannelMemberFlags
 {
-    MEMBER_FLAG_NONE        = 0x00,
-    MEMBER_FLAG_OWNER       = 0x01,
-    MEMBER_FLAG_MODERATOR   = 0x02,
-    MEMBER_FLAG_VOICED      = 0x04,
-    MEMBER_FLAG_MUTED       = 0x08,
-    MEMBER_FLAG_CUSTOM      = 0x10,
-    MEMBER_FLAG_MIC_MUTED   = 0x20
-                           // 0x40
-                           // 0x80
+    MEMBER_FLAG_NONE            = 0x00,
+    MEMBER_FLAG_OWNER           = 0x01,
+    MEMBER_FLAG_MODERATOR       = 0x02,
+    MEMBER_FLAG_VOICED          = 0x04,
+    MEMBER_FLAG_MUTED           = 0x08,
+    MEMBER_FLAG_CUSTOM          = 0x10,
+    MEMBER_FLAG_MIC_MUTED       = 0x20,
+//  MEMBER_FLAG_SESSION_ACTIVE  = 0x40,
+//                                0x80
 };
 
 class ChannelRights
@@ -140,64 +140,82 @@ enum eChannelRights
     CHANNEL_RIGHT_DONT_PRESERVE          = 0x100,
 };
 
+class VoiceChannel
+{
+public:
+    VoiceChannel(VoiceChatChannelType voiceChannelType);
+    ~VoiceChannel() { }
+
+private:
+    uint64 _sessionGuid;
+    uint16 _Id;
+    VoiceChatChannelType _type;
+};
+
 class Channel
 {
-    struct PlayerInfo
+    class PlayerInfo
     {
-        ObjectGuid player;
-        uint8 flags;
-        Player* plrPtr; // pussywizard
+    public:
+        PlayerInfo(Player const* player, bool gmStatus = false) :
+            _player(player), _flags(MEMBER_FLAG_NONE), _gmStatus(gmStatus) { }
 
-        [[nodiscard]] bool HasFlag(uint8 flag) const { return flags & flag; }
-        void SetFlag(uint8 flag) { if (!HasFlag(flag)) flags |= flag; }
-        [[nodiscard]] bool IsOwner() const { return flags & MEMBER_FLAG_OWNER; }
+        [[nodiscard]] bool HasFlag(uint8 flag) const { return _flags & flag; }
+        void SetFlag(uint8 flag) { if (!HasFlag(flag)) _flags |= flag; }
+        [[nodiscard]] bool IsOwner() const { return _flags & MEMBER_FLAG_OWNER; }
         void SetOwner(bool state)
         {
             if (state)
-                flags |= MEMBER_FLAG_OWNER;
+                _flags |= MEMBER_FLAG_OWNER;
             else
-                flags &= ~MEMBER_FLAG_OWNER;
+                _flags &= ~MEMBER_FLAG_OWNER;
         }
         [[nodiscard]] bool IsOwnerGM() const { return _gmStatus; }
         void SetOwnerGM(bool on) { _gmStatus = on; }
-        [[nodiscard]] bool IsModerator() const { return flags & MEMBER_FLAG_MODERATOR; }
+        [[nodiscard]] bool IsModerator() const { return _flags & MEMBER_FLAG_MODERATOR; }
         void SetModerator(bool state)
         {
             if (state)
-                flags |= MEMBER_FLAG_MODERATOR;
+                _flags |= MEMBER_FLAG_MODERATOR;
             else
-                flags &= ~MEMBER_FLAG_MODERATOR;
+                _flags &= ~MEMBER_FLAG_MODERATOR;
         }
-        [[nodiscard]] bool IsMuted() const { return flags & MEMBER_FLAG_MUTED; }
+        [[nodiscard]] bool IsMuted() const { return _flags & MEMBER_FLAG_MUTED; }
         void SetMuted(bool state)
         {
             if (state)
-                flags |= MEMBER_FLAG_MUTED;
+                _flags |= MEMBER_FLAG_MUTED;
             else
-                flags &= ~MEMBER_FLAG_MUTED;
+                _flags &= ~MEMBER_FLAG_MUTED;
         }
-        [[nodiscard]] bool IsMicMuted() const { return flags & MEMBER_FLAG_MIC_MUTED; }
+        [[nodiscard]] bool IsMicMuted() const { return _flags & MEMBER_FLAG_MIC_MUTED; }
         void SetMicMuted(bool state)
         {
             if (state)
-                flags |= MEMBER_FLAG_MIC_MUTED;
+                _flags |= MEMBER_FLAG_MIC_MUTED;
             else
-                flags &= ~MEMBER_FLAG_MIC_MUTED;
+                _flags &= ~MEMBER_FLAG_MIC_MUTED;
         }
-        [[nodiscard]] bool IsVoiced() const { return flags & MEMBER_FLAG_VOICED; }
+        [[nodiscard]] bool IsVoiced() const { return _flags & MEMBER_FLAG_VOICED; }
         void SetVoiced(bool state)
         {
             if (state)
-                flags |= MEMBER_FLAG_VOICED;
+                _flags |= MEMBER_FLAG_VOICED;
             else
-                flags &= ~MEMBER_FLAG_VOICED;
+                _flags &= ~MEMBER_FLAG_VOICED;
         }
+
+        Player const& GetPlayer() const { return *_player; }
+        uint8 GetPlayerFlags() const { return _flags; }
     private:
-        bool _gmStatus = false;
+        Player const* _player;
+        uint8 _flags;
+        bool _gmStatus;
     };
 
 public:
     Channel(std::string const& name, uint32 channelId, uint32 channelDBId, TeamId teamId = TEAM_NEUTRAL, bool announce = true, bool ownership = true);
+    Channel(VoiceChatChannelType voiceChannelType);
     [[nodiscard]] std::string const& GetName() const { return _name; }
     [[nodiscard]] uint32 GetChannelId() const { return _channelId; }
     [[nodiscard]] uint32 GetChannelDBId() const { return _channelDBId; }
@@ -235,9 +253,9 @@ public:
     void Invite(Player const* player, std::string const& newp);
     void Voice(ObjectGuid guid1, ObjectGuid guid2);
     void DeVoice(ObjectGuid guid1, ObjectGuid guid2);
-    void JoinNotify(Player* p);
-    void LeaveNotify(Player* p);
-    void FlagsNotify(Player* p);
+    void JoinNotify(Player const& p);
+    void LeaveNotify(Player const& p);
+    void FlagsNotify(Player const& p);
     static void CleanOldChannelsInDB();
     void ToggleModeration(Player* p);
 
@@ -300,45 +318,30 @@ private:
     bool ShouldAnnouncePlayer(Player const* player) const;
 
     void UpdateChannelInDB() const;
-    void UpdateChannelUseageInDB() const;
+    void UpdateChannelUsageInDB() const;
     void AddChannelBanToDB(ObjectGuid guid, uint32 time) const;
     void RemoveChannelBanFromDB(ObjectGuid guid) const;
 
     [[nodiscard]] uint8 GetPlayerFlags(ObjectGuid guid) const
     {
         PlayerContainer::const_iterator itr = playersStore.find(guid);
-        return itr != playersStore.end() ? itr->second.flags : 0;
+        return itr != playersStore.end() ? itr->second.GetPlayerFlags() : 0;
     }
 
-    void SetModerator(ObjectGuid guid, bool set)
+    [[nodiscard]] PlayerInfo const* GetPlayerInfo(ObjectGuid guid) const
     {
-        PlayerInfo& pinfo = playersStore[guid];
-        if (pinfo.IsModerator() != set)
-        {
-            uint8 oldFlag = pinfo.flags;
-            pinfo.SetModerator(set);
-
-            WorldPacket data;
-            MakeModeChange(&data, guid, oldFlag);
-            SendToAll(&data);
-
-            FlagsNotify(pinfo.plrPtr);
-        }
+        PlayerContainer::const_iterator itr = playersStore.find(guid);
+        return itr != playersStore.end() ? &itr->second : nullptr;
     }
 
-    void SetMute(ObjectGuid guid, bool set)
+    [[nodiscard]] PlayerInfo* GetPlayerInfo(ObjectGuid guid)
     {
-        PlayerInfo& pinfo = playersStore[guid];
-        if (pinfo.IsMuted() != set)
-        {
-            uint8 oldFlag = pinfo.flags;
-            pinfo.SetMuted(set);
-
-            WorldPacket data;
-            MakeModeChange(&data, guid, oldFlag);
-            SendToAll(&data);
-        }
+        PlayerContainer::iterator itr = playersStore.find(guid);
+        return itr != playersStore.end() ? &itr->second : nullptr;
     }
+
+    void SetModerator(ObjectGuid guid, bool set);
+    void SetMute(ObjectGuid guid, bool set);
 
     typedef std::unordered_map<ObjectGuid, PlayerInfo> PlayerContainer;
     typedef std::unordered_map<ObjectGuid, uint32> BannedContainer;
@@ -361,5 +364,7 @@ private:
     PlayerContainer playersStore;
     BannedContainer bannedStore;
     PlayersWatchingContainer playersWatchingStore;
+
+    std::unique_ptr<VoiceChannel> _voiceChannel;
 };
 #endif

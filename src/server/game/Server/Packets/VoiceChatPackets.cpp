@@ -70,8 +70,8 @@ void WorldPackets::VoiceChat::ChannelUnsilence::Read()
 WorldPacket const* WorldPackets::VoiceChat::AvailableVoiceChannel::Write()
 {
     _worldPacket << SessionId;
-    _worldPacket << Type;
-    if (Type == VOICECHAT_CHANNEL_CUSTOM)
+    _worldPacket << uint8(Type);
+    if (Type == VoiceChatChannelType::Custom)
         _worldPacket << ChannelName;
     else
         _worldPacket << uint8(0);

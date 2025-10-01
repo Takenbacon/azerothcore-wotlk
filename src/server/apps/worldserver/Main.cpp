@@ -48,7 +48,6 @@
 #include "SecretMgr.h"
 #include "SharedDefines.h"
 #include "SteadyTimer.h"
-#include "VoiceChatMgr.h"
 #include "World.h"
 #include "WorldSessionMgr.h"
 #include "WorldSocket.h"
@@ -318,7 +317,7 @@ int main(int argc, char** argv)
         sScriptMgr->OnAfterUnloadAllMaps();
     });
 
-    sVoiceChatMgr.Init();
+    //sVoiceChatMgr.Init();
 
     // Start the Remote Access port (acceptor) if enabled
     std::unique_ptr<AsyncAcceptor> raAcceptor;

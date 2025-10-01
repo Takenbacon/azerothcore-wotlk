@@ -17,10 +17,7 @@
 
 #include "VoiceChatSocket.h"
 #include "Log.h"
-#include "VoiceChatDefines.h"
 #include "VoiceChatSharedDefines.h"
-#include "VoiceChatMgr.h"
-#include <iomanip>
 
 VoiceChatSocket::VoiceChatSocket(tcp::socket &&socket)
     : TcpSocket<VoiceChatSocket>(std::move(socket))
@@ -53,6 +50,9 @@ void VoiceChatSocket::SendPacket(VoiceChatServerPacket const& pkt)
     header.size = sizeof(header.cmd) + pkt.size();
     header.cmd = pkt.GetOpcode();
 
+    EndianConvertReverse(header.size);
+    EndianConvert(header.cmd);
+
     MessageBuffer buffer(header.headerSize() + pkt.size());
     buffer.Write(header.data(), header.headerSize());
     if (!pkt.empty())
@@ -66,8 +66,8 @@ bool VoiceChatSocket::ReadHeaderHandler()
     ASSERT(_headerBuffer.GetActiveSize() == sizeof(VoiceChatServerPktHeader));
 
     VoiceChatServerPktHeader* header = reinterpret_cast<VoiceChatServerPktHeader*>(_headerBuffer.GetReadPointer());
-    /*EndianConvertReverse(header->size);
-    EndianConvert(header->cmd);*/
+    EndianConvertReverse(header->size);
+    EndianConvert(header->cmd);
 
     if (!header->IsValidSize() || !header->IsValidOpcode())
     {
@@ -91,7 +91,7 @@ ReadDataHandlerResult VoiceChatSocket::ReadDataHandler()
     LOG_TRACE("network", "Received opcode {} size {}", opcode, header->size);
 
     std::unique_ptr<VoiceChatServerPacket> packet = std::make_unique<VoiceChatServerPacket>(opcode, std::move(_packetBuffer));
-    sVoiceChatMgr.QueuePacket(std::move(packet));
+    //sVoiceChatMgr.QueuePacket(std::move(packet));
 
     return ReadDataHandlerResult::Ok;
 }

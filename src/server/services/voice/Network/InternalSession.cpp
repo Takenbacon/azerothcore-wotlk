@@ -33,8 +33,8 @@ bool InternalSession::ReadHeaderHandler()
     ASSERT(_headerBuffer.GetActiveSize() == sizeof(VoiceChatServerPktHeader));
 
     VoiceChatServerPktHeader* header = reinterpret_cast<VoiceChatServerPktHeader*>(_headerBuffer.GetReadPointer());
-    /*EndianConvertReverse(header->size);
-    EndianConvert(header->cmd);*/
+    EndianConvertReverse(header->size);
+    EndianConvert(header->cmd);
 
     if (!header->IsValidSize() || !header->IsValidOpcode())
     {
@@ -114,8 +114,8 @@ void InternalSession::SendPacket(VoiceChatServerPacket const& packet)
     pktHeader.size = sizeof(pktHeader.cmd) + packet.wpos();
     pktHeader.cmd = packet.GetOpcode();
 
-    //EndianConvertReverse(pktHeader.size);
-    //EndianConvert(pktHeader.cmd);
+    EndianConvertReverse(pktHeader.size);
+    EndianConvert(pktHeader.cmd);
 
     MessageBuffer buffer(pktHeader.headerSize() + packet.size());
     buffer.Write(pktHeader.data(), pktHeader.headerSize());
@@ -123,5 +123,5 @@ void InternalSession::SendPacket(VoiceChatServerPacket const& packet)
         buffer.Write(packet.contents(), packet.size());
     QueuePacket(std::move(buffer));
 
-    LOG_TRACE("network", "Sending opcode {} size {}", packet.GetOpcode(), pktHeader.size);
+    LOG_TRACE("network", "Sending opcode {} size {}", packet.GetOpcode(), packet.size());
 }
