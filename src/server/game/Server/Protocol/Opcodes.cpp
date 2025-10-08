@@ -1110,7 +1110,7 @@ void OpcodeTable::Initialize()
     /*0x3D3*/ DEFINE_HANDLER(CMSG_SET_ACTIVE_VOICE_CHANNEL,                                         STATUS_AUTHED,     PROCESS_THREADUNSAFE,   &WorldSession::HandleSetActiveVoiceChannelOpcode        );
     /*0x3D4*/ DEFINE_HANDLER(CMSG_GET_CHANNEL_MEMBER_COUNT,                                         STATUS_LOGGEDIN,   PROCESS_THREADSAFE,     &WorldSession::HandleGetChannelMemberCount              );
     /*0x3D5*/ DEFINE_SERVER_OPCODE_HANDLER(SMSG_CHANNEL_MEMBER_COUNT,                               STATUS_NEVER);
-    /*0x3D6*/ DEFINE_HANDLER(CMSG_CHANNEL_VOICE_ON,                                                 STATUS_LOGGEDIN,   PROCESS_THREADSAFE,     &WorldSession::HandleChannelVoiceOnOpcode               );
+    /*0x3D6*/ DEFINE_HANDLER(CMSG_CHANNEL_VOICE_ON,                                                 STATUS_LOGGEDIN,   PROCESS_THREADUNSAFE,   &WorldSession::HandleChannelVoiceOnOpcode               );
     /*0x3D7*/ DEFINE_HANDLER(CMSG_CHANNEL_VOICE_OFF,                                                STATUS_LOGGEDIN,   PROCESS_THREADUNSAFE,   &WorldSession::HandleChannelVoiceOffOpcode              );
     /*0x3D8*/ DEFINE_HANDLER(CMSG_DEBUG_LIST_TARGETS,                                               STATUS_NEVER,      PROCESS_INPLACE,        &WorldSession::Handle_NULL                              );
     /*0x3D9*/ DEFINE_SERVER_OPCODE_HANDLER(SMSG_DEBUG_LIST_TARGETS,                                 STATUS_NEVER);

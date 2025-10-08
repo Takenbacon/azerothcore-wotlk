@@ -20,41 +20,35 @@
 
 #include <Define.h>
 
-enum VoiceChatServerOpcodes
+enum class VoiceChatServerOpcodes : uint8
 {
-    VOICECHAT_NULL_ACTION          = 0,
-    VOICECHAT_CMSG_CREATE_CHANNEL  = 1,
-    VOICECHAT_SMSG_CHANNEL_CREATED = 2,
-    VOICECHAT_CMSG_ADD_MEMBER      = 3,
-    VOICECHAT_CMSG_REMOVE_MEMBER   = 4,
-    VOICECHAT_CMSG_VOICE_MEMBER    = 5,
-    VOICECHAT_CMSG_DEVOICE_MEMBER  = 6,
-    VOICECHAT_CMSG_MUTE_MEMBER     = 7,
-    VOICECHAT_CMSG_UNMUTE_MEMBER   = 8,
-    VOICECHAT_CMSG_DELETE_CHANNEL  = 9,
-    VOICECHAT_CMSG_PING            = 10,
-    VOICECHAT_SMSG_PONG            = 11,
+    NULL_OPCODE,
 
-    VOICECHAT_NUM_OPCODES,
+    CMSG_PING,
+    SMSG_PONG,
+    CMSG_CREATE_VOICE_SESSION,
+    SMSG_CREATE_VOICE_SESSION_RESPONSE,
+
+    NUM_OPCODES,
 };
 
 struct VoiceChatServerPktHeader
 {
     uint16 size;
-    uint16 cmd;
+    uint8 cmd;
 
     char const* data() const { return reinterpret_cast<const char*>(this); }
     std::size_t headerSize() const { return sizeof(VoiceChatServerPktHeader); }
 
     bool IsValidSize() const { return size >= 2 && size < 10240; } //@todo
-    bool IsValidOpcode() const { return cmd < VOICECHAT_NUM_OPCODES; }
+    bool IsValidOpcode() const { return cmd < static_cast<uint8>(VoiceChatServerOpcodes::NUM_OPCODES); }
 };
 
 class VoiceChatServerPacket : public ByteBuffer
 {
 public:
     // just container for later use
-    VoiceChatServerPacket() : ByteBuffer(0), _opcode(VOICECHAT_NULL_ACTION)
+    VoiceChatServerPacket() : ByteBuffer(0), _opcode(VoiceChatServerOpcodes::NULL_OPCODE)
     {
     }
     explicit VoiceChatServerPacket(VoiceChatServerOpcodes opcode, size_t res = 200) : ByteBuffer(res), _opcode(opcode) { }

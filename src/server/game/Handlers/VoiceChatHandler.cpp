@@ -35,6 +35,9 @@ void WorldSession::HandleChannelVoiceOnOpcode(WorldPackets::VoiceChat::ChannelVo
 {
     LOG_DEBUG("network", "WORLD: Received CMSG_CHANNEL_VOICE_ON");
 
+    if (ChannelMgr* cMgr = ChannelMgr::forTeam(GetPlayer()->GetTeamId()))
+        if (Channel* channel = cMgr->GetChannel(packet.ChannelName, GetPlayer()))
+            channel->VoiceOn(GetPlayer());
 }
 
 void WorldSession::HandleSetActiveVoiceChannelOpcode(WorldPackets::VoiceChat::SetActiveVoiceChannel& packet)
@@ -47,7 +50,7 @@ void WorldSession::HandleChannelVoiceOffOpcode(WorldPackets::VoiceChat::ChannelV
 {
     LOG_DEBUG("network", "WORLD: Received CMSG_CHANNEL_VOICE_OFF");
 
-    // todo check if possible to send with chat commands
+    // unused?
 }
 
 void WorldSession::HandleAddVoiceIgnoreOpcode(WorldPackets::VoiceChat::AddVoiceIgnore& packet)

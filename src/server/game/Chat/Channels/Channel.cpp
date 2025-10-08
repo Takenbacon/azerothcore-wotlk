@@ -24,8 +24,10 @@
 #include "ObjectMgr.h"
 #include "Player.h"
 #include "SocialMgr.h"
+#include "VoiceChatMgr.h"
 #include "World.h"
 
+// Text-channel (can be converted to voice as well)
 Channel::Channel(std::string const& name, uint32 channelId, uint32 channelDBId, TeamId teamId, bool announce, bool ownership):
     _announce(announce),
     _moderation(false),
@@ -36,7 +38,10 @@ Channel::Channel(std::string const& name, uint32 channelId, uint32 channelDBId, 
     _channelId(channelId),
     _channelDBId(channelDBId),
     _teamId(teamId),
-    _name(name)
+    _name(name),
+    _voiceId(0),
+    _voiceSessionGuid(0),
+    _voiceType(VoiceChatChannelType::Custom)
 {
     // set special flags if built-in channel
     if (ChatChannelsEntry const* ch = sChatChannelsStore.LookupEntry(channelId)) // check whether it's a built-in channel
@@ -93,18 +98,21 @@ Channel::Channel(std::string const& name, uint32 channelId, uint32 channelDBId, 
     }
 }
 
+// Voice-channel (used in raids, parties)
 Channel::Channel(VoiceChatChannelType voiceChannelType) :
     _announce(false),
     _moderation(false),
     _ownership(false),
     _IsSaved(false),
     _isOwnerGM(false),
-    _flags(0),
+    _flags(CHANNEL_FLAG_VOICE),
     _channelId(0),
     _channelDBId(0),
-    _teamId(TeamId::TEAM_NEUTRAL)
+    _teamId(TeamId::TEAM_NEUTRAL),
+    _voiceId(sVoiceChatMgr->GetNextVoiceChannelId()),
+    _voiceSessionGuid(0),
+    _voiceType(voiceChannelType)
 {
-    _voiceChannel = std::make_unique<VoiceChannel>(voiceChannelType);
 }
 
 bool Channel::IsBanned(ObjectGuid guid) const
@@ -754,7 +762,7 @@ void Channel::ToggleVoice(Player* player)
     }
 
     // toggle channel voice
-    _voice = !_voice;
+    /*_voice = !_voice;
 
     WorldPacket data;
     if (_voice)
@@ -775,10 +783,38 @@ void Channel::ToggleVoice(Player* player)
         Player const& member = playerStore.second.GetPlayer();
         if (member.GetSession()->IsVoiceChatEnabled())
             playerStore.second.SetVoiced(_voice);
-    }
+    }*/
 
     /*if (_voice)
         sVoiceChatMgr.AddToCustomVoiceChatChannel(guid, this->GetName(), player->GetTeamId());*/
+}
+
+void Channel::VoiceOn(Player* player)
+{
+    // Verify player is on this channel
+    PlayerInfo const* playerInfo = GetPlayerInfo(player->GetGUID());
+    if (!playerInfo)
+    {
+        WorldPacket data;
+        MakeNotMember(&data);
+        SendToOne(&data, player->GetGUID());
+        return;
+    }
+
+    // Already a voice channel, do nothing
+    if (_flags & CHANNEL_FLAG_VOICE)
+        return;
+
+    // Inform channel members (TODO: should this be sent to non-voice activated players?)
+    WorldPacket data;
+    MakeVoiceOn(&data, player->GetGUID());
+    SendToAll(&data);
+
+    _flags |= CHANNEL_FLAG_VOICE;
+    _voiceId = sVoiceChatMgr->GetNextVoiceChannelId(); // _voiceId must be set before RegisterVoiceChannel
+    _voiceType = VoiceChatChannelType::Custom;
+
+    sVoiceChatMgr->CreateVoiceSession(this);
 }
 
 void Channel::List(Player const* player, bool display)
@@ -1389,10 +1425,4 @@ void Channel::MakeModerationOff(WorldPacket* data, ObjectGuid guid)
 {
     MakeNotifyPacket(data, CHAT_MODERATION_OFF_NOTICE);
     *data << guid;
-}
-
-VoiceChannel::VoiceChannel(VoiceChatChannelType voiceChannelType)
-    : _type(voiceChannelType)
-{
-    // todo id/sess
 }

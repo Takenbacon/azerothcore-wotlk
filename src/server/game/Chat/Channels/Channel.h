@@ -140,18 +140,6 @@ enum eChannelRights
     CHANNEL_RIGHT_DONT_PRESERVE          = 0x100,
 };
 
-class VoiceChannel
-{
-public:
-    VoiceChannel(VoiceChatChannelType voiceChannelType);
-    ~VoiceChannel() { }
-
-private:
-    uint64 _sessionGuid;
-    uint16 _Id;
-    VoiceChatChannelType _type;
-};
-
 class Channel
 {
     class PlayerInfo
@@ -267,8 +255,11 @@ public:
     void RemoveWatching(Player* p);
 
     bool IsVoiceEnabled() const { return HasFlag(CHANNEL_FLAG_VOICE); }
-    void ToggleVoice(Player* player = nullptr);
+    void ToggleVoice(Player* player = nullptr); // remove
+    void VoiceOn(Player* player);
     void AddVoiceChatMembersAfterCreate();
+
+    uint16 GetVoiceId() const { return _voiceId; }
 private:
     // initial packet data (notify type and channel name)
     void MakeNotifyPacket(WorldPacket* data, uint8 notify_type);
@@ -359,12 +350,14 @@ private:
     ObjectGuid _ownerGUID;
     std::string _name;
     std::string _password;
-    bool _voice = false;
     ChannelRights _channelRights;
     PlayerContainer playersStore;
     BannedContainer bannedStore;
     PlayersWatchingContainer playersWatchingStore;
 
-    std::unique_ptr<VoiceChannel> _voiceChannel;
+    // Voice chat
+    uint64 _voiceSessionGuid;
+    uint16 _voiceId;
+    VoiceChatChannelType _voiceType;
 };
 #endif

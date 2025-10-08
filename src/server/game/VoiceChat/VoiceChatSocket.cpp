@@ -48,7 +48,7 @@ void VoiceChatSocket::SendPacket(VoiceChatServerPacket const& pkt)
 
     VoiceChatServerPktHeader header;
     header.size = sizeof(header.cmd) + pkt.size();
-    header.cmd = pkt.GetOpcode();
+    header.cmd = static_cast<uint8>(pkt.GetOpcode());
 
     EndianConvertReverse(header.size);
     EndianConvert(header.cmd);
