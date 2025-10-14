@@ -90,17 +90,20 @@ public:
             _threads[i].Wait();
     }
 
-    virtual void OnSocketOpen(tcp::socket&& sock, uint32 threadIndex)
+    std::shared_ptr<SocketType> OnSocketOpen(tcp::socket&& sock, uint32 threadIndex)
     {
         try
         {
             std::shared_ptr<SocketType> newSocket = std::make_shared<SocketType>(std::move(sock));
             _threads[threadIndex].AddSocket(newSocket);
+            return newSocket;
         }
         catch (boost::system::system_error const& err)
         {
             LOG_WARN("network", "Failed to retrieve client's remote address {}", err.what());
         }
+
+        return nullptr;
     }
 
     [[nodiscard]] int32 GetNetworkThreadCount() const { return _threadCount; }

@@ -41,7 +41,7 @@ public:
     /// Stops all network threads, It will wait for all running threads .
     void StopNetwork() override;
 
-    void OnSocketOpen(tcp::socket&& sock, uint32 threadIndex) override;
+    std::shared_ptr<WorldSocket> OnWorldSocketOpen(tcp::socket&& sock, uint32 threadIndex);
 
     std::size_t GetApplicationSendBufferSize() const { return _socketApplicationSendBufferSize; }
 

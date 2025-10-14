@@ -61,13 +61,13 @@ ReadDataHandlerResult InternalSession::ReadDataHandler()
 
     switch (opcode)
     {
-        case VOICECHAT_CMSG_PING:
+        case VoiceChatServerOpcodes::CMSG_PING:
         {
-            VoiceChatServerPacket data(VOICECHAT_SMSG_PONG, 0);
+            VoiceChatServerPacket data(VoiceChatServerOpcodes::SMSG_PONG, 0);
             SendPacket(data);
             break;
         }
-        case VOICECHAT_CMSG_CREATE_CHANNEL:
+        /*case VOICECHAT_CMSG_CREATE_CHANNEL:
         {
             uint8 type;
             uint32 requestId;
@@ -99,7 +99,7 @@ ReadDataHandlerResult InternalSession::ReadDataHandler()
 
             sChannelMgr.VoiceMember(this, channelId, memberId);
             break;
-        }
+        }*/
     }
 
     return ReadDataHandlerResult::Ok;
@@ -112,7 +112,7 @@ void InternalSession::SendPacket(VoiceChatServerPacket const& packet)
 
     VoiceChatServerPktHeader pktHeader;
     pktHeader.size = sizeof(pktHeader.cmd) + packet.wpos();
-    pktHeader.cmd = packet.GetOpcode();
+    pktHeader.cmd = static_cast<uint8>(packet.GetOpcode());
 
     EndianConvertReverse(pktHeader.size);
     EndianConvert(pktHeader.cmd);

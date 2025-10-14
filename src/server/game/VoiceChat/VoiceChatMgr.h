@@ -18,7 +18,10 @@
 #ifndef __VoiceChatMgr_H__
 #define __VoiceChatMgr_H__
 
+#include "LockedQueue.h"
 #include "TcpAsyncConnector.h"
+#include "Timer.h"
+#include "VoiceChatSharedDefines.h"
 
 class Channel;
 class VoiceChatSocket;
@@ -26,7 +29,7 @@ class VoiceChatSocket;
 class VoiceServerConnector : public TcpAsyncConnector
 {
 public:
-    VoiceServerConnector(boost::asio::io_context& context) :
+    VoiceServerConnector(Acore::Asio::IoContext& context) :
         TcpAsyncConnector(context) { }
 
     void OnConnectionSuccess(std::unique_ptr<tcp::socket> socket);
@@ -56,8 +59,11 @@ public:
 
     uint16 GetNextVoiceChannelId() { return ++_nextVoiceChannelId; }
 
+    void SetVoiceChatServerSocket(std::shared_ptr<VoiceChatSocket> socket) { _voiceServerSocket = socket; }
+    void QueueIncomingVoiceServerPacket(std::unique_ptr<VoiceChatServerPacket> packet);
+
 private:
-    void UpdateVoiceServerConnection();
+    void UpdateVoiceServerConnection(uint32 const diff);
 
     bool _enabled;
     uint16 _nextVoiceChannelId;
@@ -65,8 +71,12 @@ private:
     typedef std::unordered_map<uint16, Channel*> VoiceChannelsMap;
     VoiceChannelsMap _voiceChannels;
 
-    VoiceServerConnector _voiceServerConnector;
+    std::shared_ptr<VoiceServerConnector> _voiceServerConnector;
     std::shared_ptr<VoiceChatSocket> _voiceServerSocket;
+
+    LockedQueue<std::unique_ptr<VoiceChatServerPacket>> _voiceServerPacketQueue;
+
+    IntervalTimer _pingTimer;
 };
 
 #define sVoiceChatMgr VoiceChatMgr::Instance()

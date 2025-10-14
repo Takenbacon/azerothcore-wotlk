@@ -26,7 +26,7 @@ using boost::asio::ip::tcp;
 class TcpAsyncConnector : public std::enable_shared_from_this<TcpAsyncConnector>
 {
 public:
-    TcpAsyncConnector(boost::asio::io_context& context): _ioContext(&context), _socket(nullptr),
+    TcpAsyncConnector(Acore::Asio::IoContext& context): _ioContext(&context), _socket(nullptr),
         _connectTimer(context), _needsReconnect(false), _reconnectTimer(context) { }
     ~TcpAsyncConnector() { Stop(); }
 
@@ -40,6 +40,7 @@ public:
         _timeout = timeout;
 
         TryConnect();
+        return true;
     }
 
     // Connect to an endpoint with timeout until successful
@@ -57,6 +58,7 @@ public:
         _reconnectTime = reconnectTime;
 
         TryConnect();
+        return true;
     }
 
     // Stop attempting any connections
@@ -90,7 +92,7 @@ private:
         });
 
         // Start async connect
-        _socket = std::make_unique<tcp::socket>(_ioContext);
+        _socket = std::make_unique<tcp::socket>(*_ioContext);
         _socket->async_connect(_endpoint, [self = shared_from_this()](boost::system::error_code const& ec)
         {
             self->SocketConnected(ec);
@@ -133,7 +135,7 @@ private:
         });
     }
 
-    boost::asio::io_context* _ioContext;
+    Acore::Asio::IoContext* _ioContext;
     std::unique_ptr<tcp::socket> _socket;
 
     tcp::endpoint _endpoint;

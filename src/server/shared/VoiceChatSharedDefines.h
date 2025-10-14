@@ -40,7 +40,7 @@ struct VoiceChatServerPktHeader
     char const* data() const { return reinterpret_cast<const char*>(this); }
     std::size_t headerSize() const { return sizeof(VoiceChatServerPktHeader); }
 
-    bool IsValidSize() const { return size >= 2 && size < 10240; } //@todo
+    bool IsValidSize() const { return size >= 1 && size < 10240; } //@todo
     bool IsValidOpcode() const { return cmd < static_cast<uint8>(VoiceChatServerOpcodes::NUM_OPCODES); }
 };
 

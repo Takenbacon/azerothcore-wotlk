@@ -15,6 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "VoiceChatMgr.h"
 #include "VoiceChatSocket.h"
 #include "Log.h"
 #include "VoiceChatSharedDefines.h"
@@ -91,7 +92,7 @@ ReadDataHandlerResult VoiceChatSocket::ReadDataHandler()
     LOG_TRACE("network", "Received opcode {} size {}", opcode, header->size);
 
     std::unique_ptr<VoiceChatServerPacket> packet = std::make_unique<VoiceChatServerPacket>(opcode, std::move(_packetBuffer));
-    //sVoiceChatMgr.QueuePacket(std::move(packet));
+    sVoiceChatMgr->QueueIncomingVoiceServerPacket(std::move(packet));
 
     return ReadDataHandlerResult::Ok;
 }

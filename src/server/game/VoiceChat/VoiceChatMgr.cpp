@@ -18,17 +18,21 @@
 #include "Channel.h"
 #include "VoiceChatMgr.h"
 #include "VoiceChatSocket.h"
+#include "VoiceChatSocketMgr.h"
 #include "WorldSocketMgr.h"
 #include <boost/asio/ip/address.hpp>
 
-VoiceChatMgr::VoiceChatMgr() : _voiceServerConnector(sWorldSocketMgr.GetIoContext()), _enabled(sWorld->getBoolConfig(CONFIG_VOICE_CHAT_ENABLED)), _nextVoiceChannelId(1)
+VoiceChatMgr::VoiceChatMgr() :_enabled(sWorld->getBoolConfig(CONFIG_VOICE_CHAT_ENABLED)), _nextVoiceChannelId(1)
 {
+    sVoiceChatSocketMgr.Init(sWorldSocketMgr.GetIoContext());
+    _voiceServerConnector = std::make_shared<VoiceServerConnector>(sWorldSocketMgr.GetIoContext());
+    _pingTimer.SetInterval(10 * SECOND * IN_MILLISECONDS);
 }
 
 void VoiceChatMgr::Disable()
 {
     _enabled = false;
-    _voiceServerConnector.Stop();
+    _voiceServerConnector->Stop();
 }
 
 void VoiceChatMgr::Enable()
@@ -50,18 +54,41 @@ void VoiceChatMgr::Update(uint32 const diff)
     if (!_enabled)
         return;
 
-    UpdateVoiceServerConnection();
+    UpdateVoiceServerConnection(diff);
 }
 
-void VoiceChatMgr::UpdateVoiceServerConnection()
+void VoiceChatMgr::QueueIncomingVoiceServerPacket(std::unique_ptr<VoiceChatServerPacket> packet)
 {
+    _voiceServerPacketQueue.emplace_back(std::move(packet));
+}
+
+void VoiceChatMgr::UpdateVoiceServerConnection(uint32 const diff)
+{
+    // Periodically fire a ping packet to check if connection is still alive
+    _pingTimer.Update(diff);
+    if (_pingTimer.Passed())
+    {
+        VoiceChatServerPacket pkt(VoiceChatServerOpcodes::CMSG_PING, 0);
+        _voiceServerSocket->SendPacket(pkt);
+        _pingTimer.Reset();
+    }
+
+    // Process incoming packet queue
+    std::unique_ptr<VoiceChatServerPacket> packet;
+    while (_voiceServerPacketQueue.next(packet))
+    {
+
+    }
+
+    // Check connection status
     if (_voiceServerSocket && !_voiceServerSocket->IsOpen())
         _voiceServerSocket = nullptr;
 
-    if (!_voiceServerSocket && !_voiceServerConnector.IsAttemptingConnection())
+    // Connect if needed
+    if (!_voiceServerSocket && !_voiceServerConnector->IsAttemptingConnection())
     {
         boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::make_address("127.0.0.1"), sWorld->getIntConfig(CONFIG_VOICE_CHAT_SERVER_PORT));
-        _voiceServerConnector.ConnectRepeat(endpoint);
+        _voiceServerConnector->ConnectRepeat(endpoint);
     }
 }
 
@@ -79,12 +106,14 @@ void VoiceChatMgr::CreateVoiceSession(Channel* channel)
 {
     RegisterVoiceChannel(channel);
 
-    VoiceChatServerPacket pkt(VoiceChatServerOpcodes::CMSG_CREATE_VOICE_SESSION, 100);
+    VoiceChatServerPacket pkt(VoiceChatServerOpcodes::CMSG_CREATE_VOICE_SESSION, 2);
     pkt << channel->GetVoiceId();
     _voiceServerSocket->SendPacket(pkt);
 }
 
 void VoiceServerConnector::OnConnectionSuccess(std::unique_ptr<tcp::socket> socket)
 {
-
+    std::shared_ptr<VoiceChatSocket> voiceSocket = sVoiceChatSocketMgr.OnSocketOpen(std::move(*socket));
+    if (voiceSocket)
+        sVoiceChatMgr->SetVoiceChatServerSocket(voiceSocket->shared_from_this());
 }

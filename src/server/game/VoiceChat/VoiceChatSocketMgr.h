@@ -18,10 +18,10 @@
 #ifndef VoiceChatSocketMgr_h__
 #define VoiceChatSocketMgr_h__
 
-// #include "VoiceChatSocket.h"
 #include "Config.h"
 #include "SocketMgr.h"
-#include "VoiceChatSocket.h"
+
+class VoiceChatSocket;
 
 class VoiceChatSocketMgr : public SocketMgr<VoiceChatSocket>
 {
@@ -34,13 +34,56 @@ public:
         return instance;
     }
 
-    bool StartNetwork(Acore::Asio::IoContext& ioContext, std::string const& bindIp, uint16 port, int threadCount = 1) override
+    VoiceChatSocketMgr() : BaseSocketMgr(), _socketSystemSendBufferSize(-1), _socketApplicationSendBufferSize(4096), _tcpNoDelay(true)
     {
-        if (!BaseSocketMgr::StartNetwork(ioContext, bindIp, port, threadCount))
-            return false;
+    }
 
-        _acceptor->AsyncAcceptWithCallback<&VoiceChatSocketMgr::OnSocketAccept>();
-        return true;
+    void Init(Acore::Asio::IoContext& ioContext)
+    {
+        _tcpNoDelay = sConfigMgr->GetOption<bool>("Network.TcpNodelay", true);
+        // -1 means use default
+        _socketSystemSendBufferSize = sConfigMgr->GetOption<int32>("Network.OutKBuff", -1);
+        _socketApplicationSendBufferSize = sConfigMgr->GetOption<int32>("Network.OutUBuff", 4096);
+
+        _ioContext = &ioContext;
+        _threadCount = 1;
+        _threads = std::unique_ptr<NetworkThread<VoiceChatSocket>[]>(CreateThreads());
+
+        ASSERT(_threads);
+
+        for (int32 i = 0; i < _threadCount; ++i)
+            _threads[i].Start();
+    }
+
+    std::shared_ptr<VoiceChatSocket> OnSocketOpen(tcp::socket&& sock)
+    {
+        // set some options here
+        if (_socketSystemSendBufferSize >= 0)
+        {
+            boost::system::error_code err;
+            sock.set_option(boost::asio::socket_base::send_buffer_size(_socketSystemSendBufferSize), err);
+
+            if (err && err != boost::system::errc::not_supported)
+            {
+                LOG_ERROR("network", "VoiceChatSocketMgr::OnSocketOpen sock.set_option(boost::asio::socket_base::send_buffer_size) err = {}", err.message());
+                return nullptr;
+            }
+        }
+
+        // Set TCP_NODELAY.
+        if (_tcpNoDelay)
+        {
+            boost::system::error_code err;
+            sock.set_option(boost::asio::ip::tcp::no_delay(true), err);
+
+            if (err)
+            {
+                LOG_ERROR("network", "VoiceChatSocketMgr::OnSocketOpen sock.set_option(boost::asio::ip::tcp::no_delay) err = {}", err.message());
+                return nullptr;
+            }
+        }
+
+        return BaseSocketMgr::OnSocketOpen(std::forward<tcp::socket>(sock), 0);
     }
 
 protected:
@@ -50,10 +93,10 @@ protected:
         return threads;
     }
 
-    static void OnSocketAccept(tcp::socket&& sock, uint32 threadIndex)
-    {
-        Instance().OnSocketOpen(std::forward<tcp::socket>(sock), threadIndex);
-    }
+private:
+    int32 _socketSystemSendBufferSize;
+    int32 _socketApplicationSendBufferSize;
+    bool _tcpNoDelay;
 };
 
 #define sVoiceChatSocketMgr VoiceChatSocketMgr::Instance()
