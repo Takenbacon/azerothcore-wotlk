@@ -15,32 +15,18 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
-#ifndef __VoiceChatSocket_H__
-#define __VoiceChatSocket_H__
+#include "VoiceChatMgr.h"
+#include "VoiceChatInternalHandler.h"
 
-#include "TcpSocket.h"
-#include "VoiceChatSharedDefines.h"
-#include <boost/asio/ip/tcp.hpp>
+VoiceChatInternalOpcodeTable<VoiceChatMgr> internalVoiceChatOpcodeTable;
 
-using boost::asio::ip::tcp;
-
-class VoiceChatSocket : public TcpSocket<VoiceChatSocket>
+template <>
+void VoiceChatInternalOpcodeTable<VoiceChatMgr>::Init()
 {
-public:
-    explicit VoiceChatSocket(tcp::socket&& socket);
+#define DEFINE_INTERNAL_VOICECHAT_HANDLER(opcode, handler) \
+    SetInternalServerOpcodeHandler(opcode, #opcode, handler)
 
-    void Start() override;
-    bool Update() override;
-    void SendPacket(VoiceChatServerPacket const& pkt);
+    DEFINE_INTERNAL_VOICECHAT_HANDLER(VoiceChatServerOpcodes::SMSG_PONG, &VoiceChatMgr::HandlePongOpcode);
 
-    uint32 GetLastPacketReceiveTime() const { return _lastPacketReceiveTime; }
-
-protected:
-    bool ReadHeaderHandler();
-    ReadDataHandlerResult ReadDataHandler();
-
-private:
-    uint32 _lastPacketReceiveTime;
-};
-
-#endif
+#undef DEFINE_INTERNAL_VOICECHAT_HANDLER
+}

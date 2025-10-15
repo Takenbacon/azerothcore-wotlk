@@ -61,6 +61,9 @@ public:
 
     void SetVoiceChatServerSocket(std::shared_ptr<VoiceChatSocket> socket) { _voiceServerSocket = socket; }
     void QueueIncomingVoiceServerPacket(std::unique_ptr<VoiceChatServerPacket> packet);
+    void SendPacket(VoiceChatServerPacket const& pkt);
+
+    void HandlePongOpcode(VoiceChatServerPacket const& packet);
 
 private:
     void UpdateVoiceServerConnection(uint32 const diff);

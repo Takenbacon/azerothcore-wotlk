@@ -21,7 +21,7 @@
 #include "VoiceChatSharedDefines.h"
 
 VoiceChatSocket::VoiceChatSocket(tcp::socket &&socket)
-    : TcpSocket<VoiceChatSocket>(std::move(socket))
+    : TcpSocket<VoiceChatSocket>(std::move(socket)), _lastPacketReceiveTime(getMSTime())
 {
     _headerBuffer.Resize(sizeof(VoiceChatServerPktHeader));
 }
@@ -86,6 +86,8 @@ bool VoiceChatSocket::ReadHeaderHandler()
 
 ReadDataHandlerResult VoiceChatSocket::ReadDataHandler()
 {
+    _lastPacketReceiveTime = getMSTime();
+
     VoiceChatServerPktHeader* header = reinterpret_cast<VoiceChatServerPktHeader*>(_headerBuffer.GetReadPointer());
     VoiceChatServerOpcodes opcode = static_cast<VoiceChatServerOpcodes>(header->cmd);
 

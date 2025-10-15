@@ -16,17 +16,22 @@
  */
 
 #include "Channel.h"
+#include "VoiceChatInternalHandler.h"
 #include "VoiceChatMgr.h"
 #include "VoiceChatSocket.h"
 #include "VoiceChatSocketMgr.h"
 #include "WorldSocketMgr.h"
 #include <boost/asio/ip/address.hpp>
 
-VoiceChatMgr::VoiceChatMgr() :_enabled(sWorld->getBoolConfig(CONFIG_VOICE_CHAT_ENABLED)), _nextVoiceChannelId(1)
+#define SOCKET_PING_INTERVAL 10 * SECOND * IN_MILLISECONDS
+#define SOCKET_NOREPLY_TIME  30 * SECOND * IN_MILLISECONDS
+
+VoiceChatMgr::VoiceChatMgr() : _enabled(sWorld->getBoolConfig(CONFIG_VOICE_CHAT_ENABLED)), _nextVoiceChannelId(1)
 {
+    internalVoiceChatOpcodeTable.Init();
     sVoiceChatSocketMgr.Init(sWorldSocketMgr.GetIoContext());
     _voiceServerConnector = std::make_shared<VoiceServerConnector>(sWorldSocketMgr.GetIoContext());
-    _pingTimer.SetInterval(10 * SECOND * IN_MILLISECONDS);
+    _pingTimer.SetInterval(SOCKET_PING_INTERVAL);
 }
 
 void VoiceChatMgr::Disable()
@@ -62,33 +67,66 @@ void VoiceChatMgr::QueueIncomingVoiceServerPacket(std::unique_ptr<VoiceChatServe
     _voiceServerPacketQueue.emplace_back(std::move(packet));
 }
 
+void VoiceChatMgr::SendPacket(VoiceChatServerPacket const& pkt)
+{
+    if (!_voiceServerSocket)
+        return;
+
+    _voiceServerSocket->SendPacket(pkt);
+}
+
+void VoiceChatMgr::HandlePongOpcode(VoiceChatServerPacket const& packet)
+{
+    // test
+}
+
 void VoiceChatMgr::UpdateVoiceServerConnection(uint32 const diff)
 {
-    // Periodically fire a ping packet to check if connection is still alive
-    _pingTimer.Update(diff);
-    if (_pingTimer.Passed())
-    {
-        VoiceChatServerPacket pkt(VoiceChatServerOpcodes::CMSG_PING, 0);
-        _voiceServerSocket->SendPacket(pkt);
-        _pingTimer.Reset();
-    }
-
     // Process incoming packet queue
     std::unique_ptr<VoiceChatServerPacket> packet;
     while (_voiceServerPacketQueue.next(packet))
     {
+        VoiceChatInternalOpcodeHandler<VoiceChatMgr> const* opHandle = internalVoiceChatOpcodeTable[packet->GetOpcode()];
+        if (!opHandle)
+            continue;
 
+        try
+        {
+            (this->*opHandle->_handler)(*packet.get());
+        }
+        catch (ByteBufferException const&)
+        {
+            
+        }
     }
 
     // Check connection status
-    if (_voiceServerSocket && !_voiceServerSocket->IsOpen())
-        _voiceServerSocket = nullptr;
-
-    // Connect if needed
-    if (!_voiceServerSocket && !_voiceServerConnector->IsAttemptingConnection())
+    if (_voiceServerSocket)
     {
-        boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::make_address("127.0.0.1"), sWorld->getIntConfig(CONFIG_VOICE_CHAT_SERVER_PORT));
-        _voiceServerConnector->ConnectRepeat(endpoint);
+        // Periodically fire a ping packet to check if connection is still alive
+        _pingTimer.Update(diff);
+        if (_pingTimer.Passed())
+        {
+            VoiceChatServerPacket pkt(VoiceChatServerOpcodes::CMSG_PING, 0);
+            SendPacket(pkt);
+            _pingTimer.Reset();
+        }
+
+        // Has it been too long since the last received packet? Drop the socket to allow connection of a new one
+        if (GetMSTimeDiffToNow(_voiceServerSocket->GetLastPacketReceiveTime()) > SOCKET_NOREPLY_TIME)
+            _voiceServerSocket->CloseSocket();
+
+        if (!_voiceServerSocket->IsOpen())
+            _voiceServerSocket = nullptr;
+    }
+    else
+    {
+        // Connect if needed
+        if (!_voiceServerConnector->IsAttemptingConnection())
+        {
+            boost::asio::ip::tcp::endpoint endpoint(boost::asio::ip::make_address("127.0.0.1"), sWorld->getIntConfig(CONFIG_VOICE_CHAT_SERVER_PORT));
+            _voiceServerConnector->ConnectRepeat(endpoint);
+        }
     }
 }
 
@@ -111,6 +149,7 @@ void VoiceChatMgr::CreateVoiceSession(Channel* channel)
     _voiceServerSocket->SendPacket(pkt);
 }
 
+// Warning: Called from boost asio callback, not thread safe
 void VoiceServerConnector::OnConnectionSuccess(std::unique_ptr<tcp::socket> socket)
 {
     std::shared_ptr<VoiceChatSocket> voiceSocket = sVoiceChatSocketMgr.OnSocketOpen(std::move(*socket));
