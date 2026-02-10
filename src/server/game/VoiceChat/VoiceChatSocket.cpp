@@ -93,6 +93,10 @@ ReadDataHandlerResult VoiceChatSocket::ReadDataHandler()
 
     LOG_TRACE("network", "Received opcode {} size {}", opcode, header->size);
 
+    // SMSG_PONG needs no handling, only used to reset _lastPacketReceiveTime
+    if (opcode == VoiceChatServerOpcodes::SMSG_PONG)
+        return ReadDataHandlerResult::Ok;
+
     std::unique_ptr<VoiceChatServerPacket> packet = std::make_unique<VoiceChatServerPacket>(opcode, std::move(_packetBuffer));
     sVoiceChatMgr->QueueIncomingVoiceServerPacket(std::move(packet));
 

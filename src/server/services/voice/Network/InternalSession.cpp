@@ -67,39 +67,6 @@ ReadDataHandlerResult InternalSession::ReadDataHandler()
             SendPacket(data);
             break;
         }
-        /*case VOICECHAT_CMSG_CREATE_CHANNEL:
-        {
-            uint8 type;
-            uint32 requestId;
-
-            packet >> type;
-            packet >> requestId;
-
-            sChannelMgr.CreateChannel(this, type, requestId);
-            break;
-        }
-        case VOICECHAT_CMSG_ADD_MEMBER:
-        {
-            uint16 channelId;
-            uint8 memberId;
-
-            packet >> channelId;
-            packet >> memberId;
-
-            sChannelMgr.AddMember(this, channelId, memberId);
-            break;
-        }
-        case VOICECHAT_CMSG_VOICE_MEMBER:
-        {
-            uint16 channelId;
-            uint8 memberId;
-
-            packet >> channelId;
-            packet >> memberId;
-
-            sChannelMgr.VoiceMember(this, channelId, memberId);
-            break;
-        }*/
     }
 
     return ReadDataHandlerResult::Ok;

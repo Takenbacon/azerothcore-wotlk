@@ -106,7 +106,7 @@ int main(int argc, char** argv)
 
     std::shared_ptr<Acore::Asio::IoContext> ioContext = std::make_shared<Acore::Asio::IoContext>();
 
-    // Stop auth server if dry run
+    // Stop voice server if dry run
     if (sConfigMgr->isDryRun())
     {
         LOG_INFO("server.voiceserver", "Dry run completed, terminating.");

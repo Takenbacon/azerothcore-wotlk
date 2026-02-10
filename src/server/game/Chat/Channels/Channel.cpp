@@ -805,7 +805,7 @@ void Channel::VoiceOn(Player* player)
     if (_flags & CHANNEL_FLAG_VOICE)
         return;
 
-    // Inform channel members (TODO: should this be sent to non-voice activated players?)
+    // Inform channel members (TODO: should this not be sent to non-voice activated players?)
     WorldPacket data;
     MakeVoiceOn(&data, player->GetGUID());
     SendToAll(&data);
