@@ -66,9 +66,6 @@ void MapGridManager::UnloadGrid(uint16 const x, uint16 const y)
         grid->VisitAllCells(visitor);
     }
 
-    GridTerrainUnloader terrainUnloader(*grid, _map);
-    terrainUnloader.UnloadTerrain();
-
     _mapGrid[x][y] = nullptr;
 }
 

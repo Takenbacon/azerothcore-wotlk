@@ -1,6 +1,5 @@
-#include "DisableMgr.h"
 #include "GridTerrainLoader.h"
-#include "MMapFactory.h"
+#include "IVMapMgr.h"
 #include "MMapMgr.h"
 #include "ScriptMgr.h"
 #include "VMapFactory.h"
@@ -49,7 +48,7 @@ void GridTerrainLoader::LoadMap()
 
 void GridTerrainLoader::LoadVMap()
 {
-    int vmapLoadResult = _map->GetMapCollisionData().LoadVMapTile(_grid.GetX(), _grid.GetY());
+    int const vmapLoadResult = _map->GetMapCollisionData().LoadVMapTile(_grid.GetX(), _grid.GetY());
     switch (vmapLoadResult)
     {
     case VMAP::VMAP_LOAD_RESULT_OK:
@@ -64,15 +63,14 @@ void GridTerrainLoader::LoadVMap()
         LOG_DEBUG("maps", "Ignored VMAP name:{}, id:{}, x:{}, y:{} (vmap rep.: x:{}, y:{})",
             _map->GetMapName(), _map->GetId(), _grid.GetX(), _grid.GetY(), _grid.GetX(), _grid.GetY());
         break;
+    default:
+        break;
     }
 }
 
 void GridTerrainLoader::LoadMMap()
 {
-    if (!DisableMgr::IsPathfindingEnabled(_map))
-        return;
-
-    int mmapLoadResult = MMAP::MMapFactory::createOrGetMMapMgr()->loadMap(_map->GetId(), _grid.GetX(), _grid.GetY());
+    int const mmapLoadResult = _map->GetMapCollisionData().LoadMMapTile(_grid.GetX(), _grid.GetY());
     switch (mmapLoadResult)
     {
     case MMAP::MMAP_LOAD_RESULT_OK:
@@ -86,6 +84,8 @@ void GridTerrainLoader::LoadMMap()
     case MMAP::MMAP_LOAD_RESULT_IGNORED:
         LOG_DEBUG("maps", "Ignored MMAP name:{}, id:{}, x:{}, y:{} (vmap rep.: x:{}, y:{})",
             _map->GetMapName(), _map->GetId(), _grid.GetX(), _grid.GetY(), _grid.GetX(), _grid.GetY());
+        break;
+    default:
         break;
     }
 }
@@ -142,14 +142,4 @@ bool GridTerrainLoader::ExistVMap(uint32 mapid, int gx, int gy)
     }
 
     return true;
-}
-
-void GridTerrainUnloader::UnloadTerrain()
-{
-    // Only parent maps manage terrain data
-    if (_map->GetInstanceId() != 0)
-        return;
-
-    //VMAP::VMapFactory::createOrGetVMapMgr()->unloadMap(_map->GetId(), _grid.GetX(), _grid.GetY());
-    MMAP::MMapFactory::createOrGetMMapMgr()->unloadMap(_map->GetId(), _grid.GetX(), _grid.GetY());
 }

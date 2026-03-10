@@ -40,17 +40,4 @@ private:
     Map* _map;
 };
 
-class GridTerrainUnloader
-{
-public:
-    GridTerrainUnloader(MapGridType& grid, Map* map)
-        : _grid(grid), _map(map) { }
-
-    void UnloadTerrain();
-
-private:
-    MapGridType& _grid;
-    Map* _map;
-};
-
 #endif

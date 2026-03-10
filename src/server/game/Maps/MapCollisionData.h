@@ -20,9 +20,12 @@
 
 #include "DynamicTree.h"
 #include "MapTree.h"
+#include "MMapMgr.h"
 #include "IVMapMgr.h"
 
 class Map;
+class dtNavMesh;
+class dtNavMeshQuery;
 
 namespace VMAP
 {
@@ -53,6 +56,21 @@ public:
     bool GetObjectHitPos(uint32 phasemask, float x1, float y1, float z1, float x2, float y2, float z2, float& rx, float& ry, float& rz, float modifyDist) const;
 };
 
+class MMapData
+{
+    friend class MapCollisionData;
+
+public:
+    dtNavMesh const* GetNavMesh() { return _navMesh.get(); }
+    dtNavMeshQuery const* GetNavMeshQuery();
+
+protected:
+    // _navMesh is a shared_ptr as it will point to a parent maps nav mesh (if exists) to save on memory
+    std::shared_ptr<dtNavMesh> _navMesh;
+    // navMeshQuery is not thread safe and needs its own instance per map
+    MMAP::ManagedNavMeshQuery _navMeshQuery;
+};
+
 // Map collision data holders (dynamic&static vmap, mmaps)
 class MapCollisionData
 {
@@ -61,20 +79,24 @@ public:
     ~MapCollisionData();
 
     int LoadVMapTile(uint32 tileX, uint32 tileY);
+    int LoadMMapTile(uint32 tileX, uint32 tileY);
 
     DynamicVMapCollisionData& GetDynamicTree() { return _dynamicVMapData; }
     DynamicVMapCollisionData const& GetDynamicTree() const { return _dynamicVMapData; }
     StaticVMapCollisionData& GetStaticTree() { return _staticVMapData; }
     StaticVMapCollisionData const& GetStaticTree() const { return _staticVMapData; }
+    MMapData& GetMMapData() { return _mmapData; }
+    MMapData const& GetMMapData() const { return _mmapData; }
 
     std::shared_ptr<VMAP::StaticMapTree> const GetStaticTreeSharedPtr() const { return _staticVMapData._staticTree; }
-    void SetStaticTree(std::shared_ptr<VMAP::StaticMapTree> staticTree) { _staticVMapData._staticTree = staticTree; }
+    std::shared_ptr<dtNavMesh> const GetMMapNavMeshSharedPtr() const { return _mmapData._navMesh; }
 
 private:
     Map const& _map;
 
     DynamicVMapCollisionData _dynamicVMapData;
     StaticVMapCollisionData _staticVMapData;
+    MMapData _mmapData;
 };
 
 #endif

@@ -60,7 +60,6 @@
 #include "LootItemStorage.h"
 #include "LootMgr.h"
 #include "M2Stores.h"
-#include "MMapFactory.h"
 #include "MapMgr.h"
 #include "Metric.h"
 #include "MotdMgr.h"
@@ -138,7 +137,6 @@ World::~World()
         delete command;
 
     VMAP::VMapFactory::clear();
-    MMAP::MMapFactory::clear();
 }
 
 std::unique_ptr<IWorld>& getWorldInstance()
@@ -293,8 +291,6 @@ void World::LoadConfigSettings(bool reload)
     VMAP::VMapFactory::createOrGetVMapMgr()->setEnableHeightCalc(enableHeight);
     LOG_INFO("server.loading", "WORLD: VMap support included. LineOfSight:{}, getHeight:{}, indoorCheck:{} PetLOS:{}", enableLOS, enableHeight, enableIndoor, enablePetLOS);
 
-    MMAP::MMapFactory::InitializeDisabledMaps();
-
     // call ScriptMgr if we're reloading the configuration
     sScriptMgr->OnAfterConfigLoad(reload);
 }
@@ -387,15 +383,6 @@ void World::SetInitialWorldSettings()
 
     // Load IP Location Database
     sIPLocation->Load();
-
-    std::vector<uint32> mapIds;
-    for (auto const& map : sMapStore)
-    {
-        mapIds.emplace_back(map->MapID);
-    }
-
-    MMAP::MMapMgr* mmmgr = MMAP::MMapFactory::createOrGetMMapMgr();
-    mmmgr->InitializeThreadUnsafe(mapIds);
 
     LOG_INFO("server.loading", "Loading Game Graveyard...");
     sGraveyard->LoadGraveyardFromDB();

@@ -16,6 +16,7 @@
  */
 
 #include "DBCStores.h"
+#include "DetourNavMeshQuery.h"
 #include "DisableMgr.h"
 #include "MapCollisionData.h"
 #include "MapTree.h"
@@ -32,23 +33,32 @@ MapCollisionData::MapCollisionData(Map const& map, Map const* parentMap, std::st
 {
     if (parentMap)
     {
-        // If we have a parent map, point our static tree to the parent maps
+        // If we have a parent map, point our static tree and mmap nav mesh to the parent maps
         _staticVMapData._staticTree = parentMap->GetMapCollisionData().GetStaticTreeSharedPtr();
+        _mmapData._navMesh = parentMap->GetMapCollisionData().GetMMapNavMeshSharedPtr();
     }
     else
     {
-        // If we are a base map create a new static tree
+        // If we are a base map create a new static tree and mmap nav mesh
         std::string const mapFileName = VMAP::VMapMgr2::getMapFileName(map.GetId());
         std::unique_ptr<VMAP::StaticMapTree> newTree = std::make_unique<VMAP::StaticMapTree>(map.GetId(), basePath);
         if (newTree->InitMap(mapFileName, VMAP::VMapFactory::createOrGetVMapMgr()))
             _staticVMapData._staticTree = std::move(newTree);
+
+        _mmapData._navMesh = MMAP::MMapMgr::LoadNavMesh(map.GetId());
     }
 }
 
 MapCollisionData::~MapCollisionData()
 {
-    if (_staticVMapData._staticTree && !_map.GetParent())
-        _staticVMapData._staticTree->UnloadMap(VMAP::VMapFactory::createOrGetVMapMgr());
+    if (!_map.GetParent())
+    {
+        // If we are the parent map, cleanup static tree
+        if (_staticVMapData._staticTree)
+            _staticVMapData._staticTree->UnloadMap(VMAP::VMapFactory::createOrGetVMapMgr());
+
+        // It appears navMesh tiles will auto cleanup in destructor, no need to manual unload call
+    }
 }
 
 int MapCollisionData::LoadVMapTile(uint32 tileX, uint32 tileY)
@@ -60,6 +70,14 @@ int MapCollisionData::LoadVMapTile(uint32 tileX, uint32 tileY)
         return VMAP::VMAP_LOAD_RESULT_ERROR;
 
     return VMAP::VMAP_LOAD_RESULT_OK;
+}
+
+int MapCollisionData::LoadMMapTile(uint32 tileX, uint32 tileY)
+{
+    if (!DisableMgr::IsPathfindingEnabled(&_map) || !_mmapData._navMesh)
+        return MMAP::MMAP_LOAD_RESULT_IGNORED;
+
+    return MMAP::MMapMgr::LoadTile(_mmapData._navMesh.get(), _map.GetId(), tileX, tileY);
 }
 
 bool StaticVMapCollisionData::isInLineOfSight(float x1, float y1, float z1, float x2, float y2, float z2, VMAP::ModelIgnoreFlags ignoreFlags) const
@@ -166,4 +184,12 @@ bool DynamicVMapCollisionData::GetObjectHitPos(uint32 phasemask, float x1, float
     ry = resultPos.y;
     rz = resultPos.z;
     return result;
+}
+
+dtNavMeshQuery const* MMapData::GetNavMeshQuery()
+{
+    if (_navMesh && !_navMeshQuery)
+        _navMeshQuery = MMAP::MMapMgr::CreateNavMeshQuery(_navMesh.get());
+
+    return _navMeshQuery.get();
 }
