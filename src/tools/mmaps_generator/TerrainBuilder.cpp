@@ -682,6 +682,8 @@ namespace MMAP
         if (!staticTree->InitMap(mapFileName, vmapMgr.get()))
             return false;
 
+        staticTree->LoadMapTile(tileX, tileY, vmapMgr.get());
+
         bool retval = false;
 
         do

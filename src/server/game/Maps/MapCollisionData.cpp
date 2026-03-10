@@ -51,7 +51,7 @@ MapCollisionData::MapCollisionData(Map const& map, Map const* parentMap, std::st
 
 MapCollisionData::~MapCollisionData()
 {
-    if (!_map.GetParent())
+    if (_map.GetInstanceId() == 0)
     {
         // If we are the parent map, cleanup static tree
         if (_staticVMapData._staticTree)
