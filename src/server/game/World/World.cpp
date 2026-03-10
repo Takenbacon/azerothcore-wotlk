@@ -70,6 +70,7 @@
 #include "Player.h"
 #include "PlayerDump.h"
 #include "PoolMgr.h"
+#include "RaceMgr.h"
 #include "Realm.h"
 #include "ScriptMgr.h"
 #include "ServerMailMgr.h"
@@ -381,6 +382,9 @@ void World::SetInitialWorldSettings()
     // Load cinematic cameras
     LoadM2Cameras(_dataPath);
 
+    LOG_INFO("server.loading", "Loading Player race data...");
+    sRaceMgr->LoadRaces();
+
     // Load IP Location Database
     sIPLocation->Load();
 
@@ -480,9 +484,6 @@ void World::SetInitialWorldSettings()
     LOG_INFO("server.loading", "Loading Spell Learn Skills...");
     sSpellMgr->LoadSpellLearnSkills();                           // must be after LoadSpellRanks
 
-    LOG_INFO("server.loading", "Loading Spell Proc Event Conditions...");
-    sSpellMgr->LoadSpellProcEvents();
-
     LOG_INFO("server.loading", "Loading Spell Proc Conditions and Data...");
     sSpellMgr->LoadSpellProcs();
 
@@ -554,6 +555,9 @@ void World::SetInitialWorldSettings()
 
     LOG_INFO("server.loading", "Loading Temporary Summon Data...");
     sObjectMgr->LoadTempSummons();                               // must be after LoadCreatureTemplates() and LoadGameObjectTemplates()
+
+    LOG_INFO("server.loading", "Loading Gameobject Summon Data...");
+    sObjectMgr->LoadGameObjectSummons();                         // must be after LoadCreatureTemplates() and LoadGameObjectTemplates()
 
     LOG_INFO("server.loading", "Loading Pet Levelup Spells...");
     sSpellMgr->LoadPetLevelupSpellMap();

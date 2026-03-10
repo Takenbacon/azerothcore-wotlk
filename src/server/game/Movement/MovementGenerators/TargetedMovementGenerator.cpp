@@ -648,15 +648,23 @@ bool FollowMovementGenerator<T>::DoUpdate(T* owner, uint32 time_diff)
             owner->UpdateAllowedPositionZ(x, y, z);
 
         bool success = i_path->CalculatePath(x, y, z, forceDest);
-        if (!success || (i_path->GetPathType() & PATHFIND_NOPATH && !followingMaster))
+
+        bool cannotReachTarget = !success || (i_path->GetPathType() & PATHFIND_NOPATH && !followingMaster);
+        if (oPet && followingMaster && !owner->CanFly() && (i_path->GetPathType() & PATHFIND_NOT_USING_PATH))
+            cannotReachTarget = true;
+
+        if (cannotReachTarget)
         {
+            if (oPet && followingMaster)
+                cOwner->SetCannotReachTarget(target->GetGUID());
+
             if (!owner->IsStopped())
                 owner->StopMoving();
 
             // Teleport if stuck and too far away
             if (cOwner && isFollowingPlayer)
             {
-                float distance = owner->GetDistance(target);
+                float const distance = owner->GetDistance2d(target);
                 if (distance > 20.f)
                 {
                     float teleX;
@@ -664,6 +672,7 @@ bool FollowMovementGenerator<T>::DoUpdate(T* owner, uint32 time_diff)
                     float teleZ;
 
                     target->GetClosePoint(teleX, teleY, teleZ, owner->GetCombatReach());
+                    teleZ = owner->GetMapHeight(teleX, teleY, teleZ);
                     owner->NearTeleportTo(teleX, teleY, teleZ, target->GetOrientation());
                     _lastTargetPosition.reset();
                     _lastPredictedPosition.reset();

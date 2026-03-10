@@ -64,6 +64,7 @@ void WorldConfig::BuildConfigCache()
     SetConfigValue<float>(RATE_XP_EXPLORE, "Rate.XP.Explore", 1.0f);
     SetConfigValue<float>(RATE_XP_PET, "Rate.XP.Pet", 1.0f);
     SetConfigValue<float>(RATE_XP_PET_NEXT_LEVEL, "Rate.Pet.LevelXP", 0.05f);
+    SetConfigValue<float>(RATE_XP_BATTLEGROUND_BONUS, "Rate.XP.BattlegroundBonus", 1.0f);
     SetConfigValue<float>(RATE_REPAIRCOST, "Rate.RepairCost", 1.0f, ConfigValueCache::Reloadable::Yes, [](float const& value) { return value >= 0.0f; }, ">= 0");
 
     SetConfigValue<float>(RATE_SELLVALUE_ITEM_POOR, "Rate.SellValue.Item.Poor", 1.0f);
@@ -303,8 +304,6 @@ void WorldConfig::BuildConfigCache()
     SetConfigValue<uint32>(CONFIG_LOGDB_CLEARINTERVAL, "LogDB.Opt.ClearInterval", 10, ConfigValueCache::Reloadable::Yes, [](uint32 const& value) { return value > 0; }, "> 0");
     SetConfigValue<uint32>(CONFIG_LOGDB_CLEARTIME, "LogDB.Opt.ClearTime", 1209600);
 
-    SetConfigValue<uint32>(CONFIG_TELEPORT_TIMEOUT_NEAR, "TeleportTimeoutNear", 25);
-    SetConfigValue<uint32>(CONFIG_TELEPORT_TIMEOUT_FAR, "TeleportTimeoutFar", 45);
     SetConfigValue<uint32>(CONFIG_MAX_ALLOWED_MMR_DROP, "MaxAllowedMMRDrop", 500);
     SetConfigValue<bool>(CONFIG_ENABLE_LOGIN_AFTER_DC, "EnableLoginAfterDC", true);
     SetConfigValue<bool>(CONFIG_DONT_CACHE_RANDOM_MOVEMENT_PATHS, "DontCacheRandomMovementPaths", false);
@@ -563,6 +562,7 @@ void WorldConfig::BuildConfigCache()
     SetConfigValue<uint32>(CONFIG_LFG_OPTIONSMASK, "DungeonFinder.OptionsMask", 5);
     SetConfigValue<bool>(CONFIG_LFG_CAST_DESERTER, "DungeonFinder.CastDeserter", true);
     SetConfigValue<bool>(CONFIG_LFG_ALLOW_COMPLETED, "DungeonFinder.AllowCompleted", true);
+    SetConfigValue<uint32>(CONFIG_LFG_DUNGEON_SELECTION_COOLDOWN, "DungeonFinder.DungeonSelectionCooldown", 0);
 
     // DBC_ItemAttributes
     SetConfigValue<bool>(CONFIG_DBC_ENFORCE_ITEM_ATTRIBUTES, "DBC.EnforceItemAttributes", true);
@@ -645,6 +645,7 @@ void WorldConfig::BuildConfigCache()
     //Debug
     SetConfigValue<bool>(CONFIG_DEBUG_BATTLEGROUND, "Debug.Battleground", false);
     SetConfigValue<bool>(CONFIG_DEBUG_ARENA, "Debug.Arena", false);
+    SetConfigValue<bool>(CONFIG_DEBUG_LFG, "Debug.LFG", false);
 
     SetConfigValue<uint32>(CONFIG_GM_LEVEL_CHANNEL_MODERATION, "Channel.ModerationGMLevel", 1);
 
@@ -675,4 +676,7 @@ void WorldConfig::BuildConfigCache()
     SetConfigValue<uint32>(CONFIG_SCOURGEINVASION_COUNTER_THIRD, "ScourgeInvasion.CounterThird", 150);
 
     SetConfigValue<std::string>(CONFIG_NEW_CHAR_STRING, "PlayerStart.String", "");
+
+    // Achievement
+    SetConfigValue<uint32>(CONFIG_ACHIEVEMENT_REALM_FIRST_KILL_WINDOW, "Achievement.RealmFirstKillWindow", 60);
 }
