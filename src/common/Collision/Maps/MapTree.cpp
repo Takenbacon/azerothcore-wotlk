@@ -291,7 +291,7 @@ namespace VMAP
 #endif
         if (!iIsTiled && ModelSpawn::readFromFile(rf, spawn))
         {
-            WorldModel* model = vm->acquireModelInstance(iBasePath, spawn.name, spawn.flags);
+            std::shared_ptr<WorldModel> model = vm->acquireModelInstance(iBasePath, spawn.name, spawn.flags);
             //VMAP_DEBUG_LOG(LOG_FILTER_MAPS, "StaticMapTree::InitMap() : loading {}", spawn.name);
             if (model)
             {
@@ -367,7 +367,7 @@ namespace VMAP
                 if (result)
                 {
                     // acquire model instance
-                    WorldModel* model = vm->acquireModelInstance(iBasePath, spawn.name, spawn.flags);
+                    std::shared_ptr<WorldModel> model = vm->acquireModelInstance(iBasePath, spawn.name, spawn.flags);
                     if (!model)
                     {
                         LOG_ERROR("maps", "StaticMapTree::LoadMapTile() : could not acquire WorldModel pointer [{}, {}]", tileX, tileY);

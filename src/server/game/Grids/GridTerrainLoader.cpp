@@ -9,6 +9,7 @@
 void GridTerrainLoader::LoadTerrain()
 {
     LoadMap();
+
     if (_map->GetInstanceId() == 0)
     {
         LoadVMap();
@@ -18,13 +19,10 @@ void GridTerrainLoader::LoadTerrain()
 
 void GridTerrainLoader::LoadMap()
 {
-    // Instances will point to the parent maps terrain data
+    // Instances will point to the parent maps terrain data, no need to load anything.
     if (_map->GetInstanceId() != 0)
     {
-        // load grid map for base map
         Map* parentMap = const_cast<Map*>(_map->GetParent());
-
-        // GetGridTerrainData will create the parent map grid
         _grid.SetTerrainData(parentMap->GetGridTerrainDataSharedPtr(GridCoord(_grid.GetX(), _grid.GetY())));
         return;
     }
@@ -51,7 +49,7 @@ void GridTerrainLoader::LoadMap()
 
 void GridTerrainLoader::LoadVMap()
 {
-    int vmapLoadResult = VMAP::VMapFactory::createOrGetVMapMgr()->loadMap((sWorld->GetDataPath() + "vmaps").c_str(), _map->GetId(), _grid.GetX(), _grid.GetY());
+    int vmapLoadResult = _map->GetMapCollisionData().LoadVMapTile(_grid.GetX(), _grid.GetY());
     switch (vmapLoadResult)
     {
     case VMAP::VMAP_LOAD_RESULT_OK:
@@ -152,6 +150,6 @@ void GridTerrainUnloader::UnloadTerrain()
     if (_map->GetInstanceId() != 0)
         return;
 
-    VMAP::VMapFactory::createOrGetVMapMgr()->unloadMap(_map->GetId(), _grid.GetX(), _grid.GetY());
+    //VMAP::VMapFactory::createOrGetVMapMgr()->unloadMap(_map->GetId(), _grid.GetX(), _grid.GetY());
     MMAP::MMapFactory::createOrGetMMapMgr()->unloadMap(_map->GetId(), _grid.GetX(), _grid.GetY());
 }

@@ -283,9 +283,9 @@ void World::LoadConfigSettings(bool reload)
     }
 
     bool const enableIndoor = getBoolConfig(CONFIG_VMAP_INDOOR_CHECK);
-    bool const enableLOS = sConfigMgr->GetOption<bool>("vmap.enableLOS", true);
+    bool const enableLOS = getBoolConfig(CONFIG_VMAP_ENABLE_LOS);
     bool const enablePetLOS = getBoolConfig(CONFIG_PET_LOS);
-    bool const enableHeight = sConfigMgr->GetOption<bool>("vmap.enableHeight", true);
+    bool const enableHeight = getBoolConfig(CONFIG_VMAP_ENABLE_HEIGHT);
     if (!enableHeight)
         LOG_ERROR("server.loading", "VMap height checking disabled! Creatures movements and other various things WILL be broken! Expect no support.");
 
@@ -393,8 +393,6 @@ void World::SetInitialWorldSettings()
     {
         mapIds.emplace_back(map->MapID);
     }
-
-    vmmgr2->InitializeThreadUnsafe(mapIds);
 
     MMAP::MMapMgr* mmmgr = MMAP::MMapFactory::createOrGetMMapMgr();
     mmmgr->InitializeThreadUnsafe(mapIds);
