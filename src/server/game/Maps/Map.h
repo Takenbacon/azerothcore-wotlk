@@ -231,8 +231,6 @@ public:
 
     [[nodiscard]] Map const* GetParent() const { return m_parentMap; }
 
-    // pussywizard: movemaps, mmaps
-    [[nodiscard]] std::shared_mutex& GetMMapLock() const { return *(const_cast<std::shared_mutex*>(&MMapLock)); }
     // pussywizard:
     std::unordered_set<Unit*> i_objectsForDelayedVisibility;
     void HandleDelayedVisibility();
@@ -552,7 +550,6 @@ protected:
     void AddToGrid(T* object, Cell const& cell);
 
     std::mutex Lock;
-    std::shared_mutex MMapLock;
 
     MapGridManager _mapGridManager;
     MapEntry const* i_mapEntry;
