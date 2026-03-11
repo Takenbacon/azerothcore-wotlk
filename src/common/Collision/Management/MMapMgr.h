@@ -22,6 +22,7 @@
 #include "DetourAlloc.h"
 #include "DetourExtended.h"
 #include "DetourNavMesh.h"
+#include <memory>
 
 //  memory management
 inline void* dtCustomAlloc(std::size_t size, dtAllocHint /*hint*/)

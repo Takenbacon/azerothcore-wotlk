@@ -19,7 +19,9 @@
 #define _WORLDMODELSTORE_H
 
 #include "WorldModel.h"
+#include <memory>
 #include <mutex>
+#include <unordered_map>
 
 class WorldModelStore
 {

@@ -49,7 +49,7 @@ namespace MMAP
         ASSERT(mesh);
         if (DT_SUCCESS != mesh->init(&params))
         {
-            dtFreeNavMesh(mesh); 
+            dtFreeNavMesh(mesh);
             LOG_ERROR("maps", "MMAP:loadMapData: Failed to initialize dtNavMesh for mmap {:03} from file {}", mapId, fileName);
             return nullptr;
         }
