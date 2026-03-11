@@ -376,15 +376,14 @@ namespace VMAP
                             continue;
                         }
 
-                        // I have some serious hesitations that this section of code is correct but I am attempting to keep it working how it was.
-                        // yes, this is similar to how it worked before and I don't understand it.
-                        // is referencedVal supposed to be a unique value? then why was it handled before by incrementing spawnCount
-                        // when there was a duplicate and not creating a new modelInstance or spawn... I am confused :(
+                        // This looks odd and is confusing, took some research to figure it out:
+                        // the first WorldModel will create a "groupmodel" of all other same-models in the tile
+                        // we don't actually care about anything else
                         if (!iTreeValues[referencedVal].getWorldModel())
                         {
                             iTreeValues[referencedVal] = ModelInstance(spawn, model);
                         }
-//#if defined(VMAP_DEBUG)
+#if defined(VMAP_DEBUG)
                         else
                         {
                             if (iTreeValues[referencedVal].ID != spawn.ID)
@@ -396,7 +395,7 @@ namespace VMAP
                                 LOG_DEBUG("maps", "StaticMapTree::LoadMapTile() : name collision on GUID={}", spawn.ID);
                             }
                         }
-//#endif
+#endif
                     }
                     else
                     {
@@ -429,57 +428,6 @@ namespace VMAP
             LOG_ERROR("maps", "StaticMapTree::UnloadMapTile() : trying to unload non-loaded tile - Map:{} X:{} Y:{}", iMapID, tileX, tileY);
             return;
         }
-        /*if (tile->second) // file associated with tile
-        {
-            std::string tilefile = iBasePath + getTileFileName(iMapID, tileX, tileY);
-            FILE* tf = fopen(tilefile.c_str(), "rb");
-            if (tf)
-            {
-                bool result = true;
-                char chunk[8];
-                if (!readChunk(tf, chunk, VMAP_MAGIC, 8))
-                {
-                    result = false;
-                }
-                uint32 numSpawns;
-                if (fread(&numSpawns, sizeof(uint32), 1, tf) != 1)
-                {
-                    result = false;
-                }
-                for (uint32 i = 0; i < numSpawns && result; ++i)
-                {
-                    // read model spawns
-                    ModelSpawn spawn;
-                    result = ModelSpawn::readFromFile(tf, spawn);
-                    if (result)
-                    {
-                        // release model instance
-                        vm->releaseModelInstance(spawn.name);
-
-                        // update tree
-                        uint32 referencedNode;
-
-                        if (fread(&referencedNode, sizeof(uint32), 1, tf) != 1)
-                        {
-                            result = false;
-                        }
-                        else
-                        {
-                            if (!iLoadedSpawns.count(referencedNode))
-                            {
-                                LOG_ERROR("maps", "StaticMapTree::UnloadMapTile() : trying to unload non-referenced model '{}' (ID:{})", spawn.name, spawn.ID);
-                            }
-                            else if (--iLoadedSpawns[referencedNode] == 0)
-                            {
-                                iTreeValues[referencedNode].setUnloaded();
-                                iLoadedSpawns.erase(referencedNode);
-                            }
-                        }
-                    }
-                }
-                fclose(tf);
-            }
-        }*/
         iLoadedTiles.erase(tile);
 
         METRIC_EVENT("map_events", "UnloadMapTile",
