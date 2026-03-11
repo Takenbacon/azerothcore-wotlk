@@ -15,6 +15,7 @@
  * with this program. If not, see <http://www.gnu.org/licenses/>.
  */
 
+#include "Log.h"
 #include "WorldModelStore.h"
 
 std::shared_ptr<VMAP::WorldModel> WorldModelStore::AcquireModelInstance(std::string const& basepath, std::string const& filename, uint32 flags/* Only used when creating the model */)

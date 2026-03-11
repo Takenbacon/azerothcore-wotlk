@@ -67,9 +67,6 @@ namespace MMAP
 
     bool MMapMgr::LoadTile(dtNavMesh* navMesh, uint32 mapId, int32 x, int32 y)
     {
-        // check if we already have this tile loaded
-        uint32 packedGridPos = packTileID(x, y);
-
         // load this tile :: mmaps/MMMXXYY.mmtile
         std::string fileName = Acore::StringFormat(TILE_FILE_NAME_FORMAT, sConfigMgr->GetOption<std::string>("DataDir", "."), mapId, x, y);
         FILE* file = fopen(fileName.c_str(), "rb");
