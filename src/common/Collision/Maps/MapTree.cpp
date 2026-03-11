@@ -22,6 +22,7 @@
 #include "ModelInstance.h"
 #include "VMapDefinitions.h"
 #include "VMapMgr2.h"
+#include "WorldModelStore.h"
 #include <iomanip>
 #include <limits>
 #include <sstream>
@@ -259,7 +260,7 @@ namespace VMAP
 
     //=========================================================
 
-    bool StaticMapTree::InitMap(const std::string& fname, VMapMgr2* vm)
+    bool StaticMapTree::InitMap(const std::string& fname)
     {
         //VMAP_DEBUG_LOG(LOG_FILTER_MAPS, "StaticMapTree::InitMap() : initializing StaticMapTree '{}'", fname);
         bool success = false;
@@ -291,13 +292,12 @@ namespace VMAP
 #endif
         if (!iIsTiled && ModelSpawn::readFromFile(rf, spawn))
         {
-            std::shared_ptr<WorldModel> model = vm->acquireModelInstance(iBasePath, spawn.name, spawn.flags);
+            std::shared_ptr<WorldModel> model = sWorldModelStore->AcquireModelInstance(iBasePath, spawn.name, spawn.flags);
             //VMAP_DEBUG_LOG(LOG_FILTER_MAPS, "StaticMapTree::InitMap() : loading {}", spawn.name);
             if (model)
             {
                 // assume that global model always is the first and only tree value (could be improved...)
                 iTreeValues[0] = ModelInstance(spawn, model);
-                iLoadedSpawns[0] = 1;
             }
             else
             {
@@ -312,23 +312,14 @@ namespace VMAP
 
     //=========================================================
 
-    void StaticMapTree::UnloadMap(VMapMgr2* vm)
+    void StaticMapTree::UnloadMap()
     {
-        for (loadedSpawnMap::iterator i = iLoadedSpawns.begin(); i != iLoadedSpawns.end(); ++i)
-        {
-            iTreeValues[i->first].setUnloaded();
-            for (uint32 refCount = 0; refCount < i->second; ++refCount)
-            {
-                vm->releaseModelInstance(iTreeValues[i->first].name);
-            }
-        }
-        iLoadedSpawns.clear();
         iLoadedTiles.clear();
     }
 
     //=========================================================
 
-    bool StaticMapTree::LoadMapTile(uint32 tileX, uint32 tileY, VMapMgr2* vm)
+    bool StaticMapTree::LoadMapTile(uint32 tileX, uint32 tileY)
     {
         if (!iIsTiled)
         {
@@ -367,10 +358,11 @@ namespace VMAP
                 if (result)
                 {
                     // acquire model instance
-                    std::shared_ptr<WorldModel> model = vm->acquireModelInstance(iBasePath, spawn.name, spawn.flags);
+                    std::shared_ptr<WorldModel> model = sWorldModelStore->AcquireModelInstance(iBasePath, spawn.name, spawn.flags);
                     if (!model)
                     {
                         LOG_ERROR("maps", "StaticMapTree::LoadMapTile() : could not acquire WorldModel pointer [{}, {}]", tileX, tileY);
+                        // why do we continue to try to load if the model was unsuccessful here?
                     }
 
                     // update tree
@@ -378,22 +370,23 @@ namespace VMAP
 
                     if (fread(&referencedVal, sizeof(uint32), 1, tf) == 1)
                     {
-                        if (!iLoadedSpawns.count(referencedVal))
+                        if (referencedVal > iNTreeValues)
                         {
-#if defined(VMAP_DEBUG)
-                            if (referencedVal > iNTreeValues)
-                            {
-                                LOG_DEBUG("maps", "StaticMapTree::LoadMapTile() : invalid tree element ({}/{})", referencedVal, iNTreeValues);
-                                continue;
-                            }
-#endif
-                            iTreeValues[referencedVal] = ModelInstance(spawn, model);
-                            iLoadedSpawns[referencedVal] = 1;
+                            LOG_DEBUG("maps", "StaticMapTree::LoadMapTile() : invalid tree element ({}/{})", referencedVal, iNTreeValues);
+                            continue;
                         }
+
+                        // I have some serious hesitations that this section of code is correct but I am attempting to keep it working how it was.
+                        // yes, this is similar to how it worked before and I don't understand it.
+                        // is referencedVal supposed to be a unique value? then why was it handled before by incrementing spawnCount
+                        // when there was a duplicate and not creating a new modelInstance or spawn... I am confused :(
+                        if (!iTreeValues[referencedVal].getWorldModel())
+                        {
+                            iTreeValues[referencedVal] = ModelInstance(spawn, model);
+                        }
+//#if defined(VMAP_DEBUG)
                         else
                         {
-                            ++iLoadedSpawns[referencedVal];
-#if defined(VMAP_DEBUG)
                             if (iTreeValues[referencedVal].ID != spawn.ID)
                             {
                                 LOG_DEBUG("maps", "StaticMapTree::LoadMapTile() : trying to load wrong spawn in node");
@@ -402,8 +395,8 @@ namespace VMAP
                             {
                                 LOG_DEBUG("maps", "StaticMapTree::LoadMapTile() : name collision on GUID={}", spawn.ID);
                             }
-#endif
                         }
+//#endif
                     }
                     else
                     {
@@ -427,7 +420,7 @@ namespace VMAP
 
     //=========================================================
 
-    void StaticMapTree::UnloadMapTile(uint32 tileX, uint32 tileY, VMapMgr2* vm)
+    void StaticMapTree::UnloadMapTile(uint32 tileX, uint32 tileY)
     {
         uint32 tileID = packTileID(tileX, tileY);
         loadedTileMap::iterator tile = iLoadedTiles.find(tileID);
@@ -436,7 +429,7 @@ namespace VMAP
             LOG_ERROR("maps", "StaticMapTree::UnloadMapTile() : trying to unload non-loaded tile - Map:{} X:{} Y:{}", iMapID, tileX, tileY);
             return;
         }
-        if (tile->second) // file associated with tile
+        /*if (tile->second) // file associated with tile
         {
             std::string tilefile = iBasePath + getTileFileName(iMapID, tileX, tileY);
             FILE* tf = fopen(tilefile.c_str(), "rb");
@@ -486,7 +479,7 @@ namespace VMAP
                 }
                 fclose(tf);
             }
-        }
+        }*/
         iLoadedTiles.erase(tile);
 
         METRIC_EVENT("map_events", "UnloadMapTile",

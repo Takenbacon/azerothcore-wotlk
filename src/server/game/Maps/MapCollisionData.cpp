@@ -41,23 +41,11 @@ MapCollisionData::MapCollisionData(Map const& map, Map const* parentMap, std::st
     {
         // If we are a base map create a new static tree and mmap nav mesh
         std::string const mapFileName = VMAP::VMapMgr2::getMapFileName(map.GetId());
-        std::unique_ptr<VMAP::StaticMapTree> newTree = std::make_unique<VMAP::StaticMapTree>(map.GetId(), basePath);
-        if (newTree->InitMap(mapFileName, VMAP::VMapFactory::createOrGetVMapMgr()))
-            _staticVMapData._staticTree = std::move(newTree);
+        std::shared_ptr<VMAP::StaticMapTree> newTree = make_shared<VMAP::StaticMapTree>(map.GetId(), basePath);
+        if (newTree->InitMap(mapFileName))
+            _staticVMapData._staticTree = newTree;
 
         _mmapData._navMesh = MMAP::MMapMgr::LoadNavMesh(map.GetId());
-    }
-}
-
-MapCollisionData::~MapCollisionData()
-{
-    if (_map.GetInstanceId() == 0)
-    {
-        // If we are the parent map, cleanup static tree
-        if (_staticVMapData._staticTree)
-            _staticVMapData._staticTree->UnloadMap(VMAP::VMapFactory::createOrGetVMapMgr());
-
-        // It appears navMesh tiles will auto cleanup in destructor, no need to manual unload call
     }
 }
 
@@ -66,7 +54,7 @@ int MapCollisionData::LoadVMapTile(uint32 tileX, uint32 tileY)
     if (!VMAP::VMapFactory::createOrGetVMapMgr()->isMapLoadingEnabled() || !_staticVMapData._staticTree)
         return VMAP::VMAP_LOAD_RESULT_IGNORED;
 
-    if (!_staticVMapData._staticTree->LoadMapTile(tileX, tileY, VMAP::VMapFactory::createOrGetVMapMgr()))
+    if (!_staticVMapData._staticTree->LoadMapTile(tileX, tileY))
         return VMAP::VMAP_LOAD_RESULT_ERROR;
 
     return VMAP::VMAP_LOAD_RESULT_OK;

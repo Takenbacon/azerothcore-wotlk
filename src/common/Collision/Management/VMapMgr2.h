@@ -19,9 +19,6 @@
 #define _VMAPMANAGER2_H
 
 #include "IVMapMgr.h"
-#include <mutex>
-#include <unordered_map>
-#include <vector>
 
 //===========================================================
 
@@ -46,11 +43,6 @@ namespace G3D
 
 namespace VMAP
 {
-    class StaticMapTree;
-    class WorldModel;
-
-    typedef std::unordered_map<std::string, std::shared_ptr<WorldModel>> ModelFileMap;
-
     enum DisableTypes
     {
         VMAP_DISABLE_AREAFLAG       = 0x1,
@@ -62,12 +54,6 @@ namespace VMAP
     class VMapMgr2 : public IVMapMgr
     {
     protected:
-        // Tree to check collision
-        ModelFileMap iLoadedModelFiles;
-
-        // Mutex for iLoadedModelFiles
-        std::mutex LoadedModelFilesLock;
-
         static uint32 GetLiquidFlagsDummy(uint32) { return 0; }
         static bool IsVMAPDisabledForDummy(uint32 /*entry*/, uint8 /*flags*/) { return false; }
 
@@ -80,9 +66,6 @@ namespace VMAP
         ~VMapMgr2() override;
 
         bool processCommand(char* /*command*/) override { return false; } // for debug and extensions
-
-        std::shared_ptr<WorldModel> acquireModelInstance(const std::string& basepath, const std::string& filename, uint32 flags);
-        void releaseModelInstance(const std::string& filename);
 
         // what's the use of this? o.O
         [[nodiscard]] std::string getDirFileName(unsigned int mapId, int /*x*/, int /*y*/) const override

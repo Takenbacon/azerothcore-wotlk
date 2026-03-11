@@ -59,8 +59,6 @@ namespace MMAP
 
     using ManagedNavMeshQuery = std::unique_ptr<dtNavMeshQuery, NavMeshQueryDeleter>;
 
-    // singleton class
-    // holds all all access to mmap loading unloading and meshes
     class MMapMgr
     {
     public:
@@ -70,8 +68,6 @@ namespace MMAP
         static std::shared_ptr<dtNavMesh> LoadNavMesh(uint32 mapId);
         static bool LoadTile(dtNavMesh* navMesh, uint32 mapId, int32 x, int32 y);
         static ManagedNavMeshQuery CreateNavMeshQuery(dtNavMesh* navMesh);
-        //bool unloadMap(uint32 mapId, int32 x, int32 y);
-        //bool unloadMap(uint32 mapId);
 
     private:
         static uint32 packTileID(int32 x, int32 y);

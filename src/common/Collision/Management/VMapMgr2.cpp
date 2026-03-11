@@ -17,11 +17,8 @@
 
 #include "VMapMgr2.h"
 #include "Errors.h"
-#include "Log.h"
 #include "MapDefines.h"
 #include "MapTree.h"
-#include "ModelInstance.h"
-#include "WorldModel.h"
 #include <G3D/Vector3.h>
 #include <iomanip>
 #include <sstream>
@@ -60,49 +57,6 @@ namespace VMAP
         fname << std::setfill('0') << mapId << std::string(MAP_FILENAME_EXTENSION2);
 
         return fname.str();
-    }
-
-    std::shared_ptr<WorldModel> VMapMgr2::acquireModelInstance(const std::string& basepath, const std::string& filename, uint32 flags/* Only used when creating the model */)
-    {
-        //! Critical section, thread safe access to iLoadedModelFiles
-        std::lock_guard<std::mutex> lock(LoadedModelFilesLock);
-
-        ModelFileMap::iterator model = iLoadedModelFiles.find(filename);
-        if (model == iLoadedModelFiles.end())
-        {
-            std::shared_ptr<WorldModel> worldmodel = std::make_shared<WorldModel>();
-            LOG_DEBUG("maps", "VMapMgr2: loading file '{}{}'", basepath, filename);
-            if (!worldmodel->readFile(basepath + filename + ".vmo"))
-            {
-                LOG_ERROR("maps", "VMapMgr2: could not load '{}{}.vmo'", basepath, filename);
-                return nullptr;
-            }
-
-            worldmodel->Flags = flags;
-
-            model = iLoadedModelFiles.insert(std::pair<std::string, std::shared_ptr<WorldModel>>(filename, worldmodel)).first;
-        }
-
-        return model->second;
-    }
-
-    void VMapMgr2::releaseModelInstance(const std::string& filename)
-    {
-        //! Critical section, thread safe access to iLoadedModelFiles
-        std::lock_guard<std::mutex> lock(LoadedModelFilesLock);
-
-        ModelFileMap::iterator model = iLoadedModelFiles.find(filename);
-        if (model == iLoadedModelFiles.end())
-        {
-            LOG_ERROR("maps", "VMapMgr2: trying to unload non-loaded file '{}'", filename);
-            return;
-        }
-
-        if (model->second.use_count() == 1)
-        {
-            LOG_DEBUG("maps", "VMapMgr2: unloading file '{}'", filename);
-            iLoadedModelFiles.erase(model);
-        }
     }
 
     LoadResult VMapMgr2::existsMap(const char* basePath, unsigned int mapId, int x, int y)

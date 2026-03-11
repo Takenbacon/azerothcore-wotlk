@@ -679,10 +679,10 @@ namespace MMAP
         std::string const mapFileName = VMapMgr2::getMapFileName(mapID);
         std::unique_ptr<VMapMgr2> vmapMgr = std::make_unique<VMapMgr2>();
         std::unique_ptr<StaticMapTree> staticTree = std::make_unique<StaticMapTree>(mapID, m_vmapsPath);
-        if (!staticTree->InitMap(mapFileName, vmapMgr.get()))
+        if (!staticTree->InitMap(mapFileName))
             return false;
 
-        staticTree->LoadMapTile(tileX, tileY, vmapMgr.get());
+        staticTree->LoadMapTile(tileX, tileY);
 
         bool retval = false;
 

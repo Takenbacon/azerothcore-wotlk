@@ -58,7 +58,7 @@ public:
 
     [[nodiscard]] const G3D::AABox& GetBounds() const { return iBound; }
 
-    ~GameObjectModel();
+    ~GameObjectModel() = default;
 
     [[nodiscard]] const G3D::Vector3& GetPosition() const { return iPos; }
 

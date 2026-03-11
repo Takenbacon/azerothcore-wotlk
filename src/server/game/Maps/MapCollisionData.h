@@ -24,8 +24,6 @@
 #include "IVMapMgr.h"
 
 class Map;
-class dtNavMesh;
-class dtNavMeshQuery;
 
 namespace VMAP
 {
@@ -76,7 +74,7 @@ class MapCollisionData
 {
 public:
     MapCollisionData(Map const& map, Map const* parentMap, std::string const& basePath);
-    ~MapCollisionData();
+    ~MapCollisionData() = default;
 
     int LoadVMapTile(uint32 tileX, uint32 tileY);
     int LoadMMapTile(uint32 tileX, uint32 tileY);
