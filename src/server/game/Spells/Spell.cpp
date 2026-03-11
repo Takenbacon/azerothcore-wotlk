@@ -1414,7 +1414,6 @@ void Spell::SelectImplicitCasterDestTargets(SpellEffIndex effIndex, SpellImplici
             {
                 float distance = m_spellInfo->Effects[effIndex].CalcRadius(m_caster);
                 Map* map = m_caster->GetMap();
-                uint32 mapid = m_caster->GetMapId();
                 uint32 phasemask = m_caster->GetPhaseMask();
                 float collisionHeight = m_caster->GetCollisionHeight();
                 float destz = 0.0f, startx = 0.0f, starty = 0.0f, startz = 0.0f, starto = 0.0f;
