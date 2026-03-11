@@ -1,5 +1,6 @@
 #include "GridTerrainLoader.h"
 #include "IVMapMgr.h"
+#include "Map.h"
 #include "MMapMgr.h"
 #include "ScriptMgr.h"
 #include "VMapFactory.h"

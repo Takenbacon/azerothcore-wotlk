@@ -20,6 +20,8 @@
 
 #include "GridDefines.h"
 
+class Map;
+
 class GridTerrainLoader
 {
 public:
