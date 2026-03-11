@@ -33,7 +33,6 @@ PathGenerator::PathGenerator(WorldObject const* owner) :
 {
     memset(_pathPolyRefs, 0, sizeof(_pathPolyRefs));
 
-    uint32 mapId = _source->GetMapId();
     //if (sDisableMgr->IsPathfindingEnabled(_sourceUnit->FindMap()))
     {
         _navMesh = _source->GetMap()->GetMapCollisionData().GetMMapData().GetNavMesh();
