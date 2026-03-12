@@ -63,7 +63,7 @@ public:
 
     /**
      * @brief Called when a (valid) packet is received by a client.
-     * reading Make sure to check WorldSession pointer before usage, it might be null in case of auth packets
+     * Make sure to check WorldSession pointer before usage, it might be null in case of auth packets
      *
      * @param session Contains information about the WorldSession
      * @param packet Contains information about the WorldPacket
