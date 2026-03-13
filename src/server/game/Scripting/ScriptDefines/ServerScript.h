@@ -67,7 +67,7 @@ public:
      *
      * @param session Contains information about the WorldSession
      * @param packet Contains information about the WorldPacket
-     * @return True if you want to continue receive the packet, false if you want to disallow receive the packet
+     * @return True if you want to continue receiving the packet, false if you want to disallow receiving the packet
      */
     [[nodiscard]] virtual bool CanPacketReceive(WorldSession* /*session*/, WorldPacket const& /*packet*/) { return true; }
 };
