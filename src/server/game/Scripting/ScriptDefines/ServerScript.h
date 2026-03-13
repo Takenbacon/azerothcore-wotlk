@@ -53,7 +53,7 @@ public:
     virtual void OnSocketClose(std::shared_ptr<WorldSocket> const& /*socket*/) { }
 
     /**
-     * @brief This hook called when a packet is sent to a client.
+     * @brief This hook is called when a packet is sent to a client.
      *
      * @param session Contains information about the WorldSession
      * @param packet Contains information about the WorldPacket
