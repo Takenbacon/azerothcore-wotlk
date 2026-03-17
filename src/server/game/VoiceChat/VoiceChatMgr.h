@@ -32,7 +32,7 @@ public:
     VoiceServerConnector(Acore::Asio::IoContext& context) :
         TcpAsyncConnector(context) { }
 
-    void OnConnectionSuccess(std::unique_ptr<tcp::socket> socket);
+    void OnConnectionSuccess(std::unique_ptr<IoContextTcpSocket> socket);
 };
 
 class VoiceChatMgr

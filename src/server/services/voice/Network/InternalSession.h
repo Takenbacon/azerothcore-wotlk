@@ -31,7 +31,7 @@ class InternalSession : public TcpSocket<InternalSession>
     typedef TcpSocket<InternalSession> InternalSocket;
 
 public:
-    InternalSession(tcp::socket&& socket);
+    InternalSession(IoContextTcpSocket&& socket);
 
     void Start() override;
     void OnClose() override;

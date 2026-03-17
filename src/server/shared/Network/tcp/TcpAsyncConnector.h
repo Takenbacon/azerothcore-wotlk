@@ -74,7 +74,7 @@ public:
     bool IsAttemptingConnection() const { return _socket.get(); }
 
 private:
-    virtual void OnConnectionSuccess(std::unique_ptr<tcp::socket> socket) { }
+    virtual void OnConnectionSuccess(std::unique_ptr<IoContextTcpSocket> socket) { }
     virtual void OnConnectionFail() { }
     virtual void OnConnectionTimeout() { }
 
@@ -92,7 +92,7 @@ private:
         });
 
         // Start async connect
-        _socket = std::make_unique<tcp::socket>(*_ioContext);
+        _socket = std::make_unique<IoContextTcpSocket>(*_ioContext);
         _socket->async_connect(_endpoint, [self = shared_from_this()](boost::system::error_code const& ec)
         {
             self->SocketConnected(ec);
@@ -136,7 +136,7 @@ private:
     }
 
     Acore::Asio::IoContext* _ioContext;
-    std::unique_ptr<tcp::socket> _socket;
+    std::unique_ptr<IoContextTcpSocket> _socket;
 
     tcp::endpoint _endpoint;
     std::chrono::seconds _timeout;

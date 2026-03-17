@@ -27,7 +27,7 @@ using boost::asio::ip::tcp;
 class VoiceChatSocket : public TcpSocket<VoiceChatSocket>
 {
 public:
-    explicit VoiceChatSocket(tcp::socket&& socket);
+    explicit VoiceChatSocket(IoContextTcpSocket&& socket);
 
     void Start() override;
     bool Update() override;

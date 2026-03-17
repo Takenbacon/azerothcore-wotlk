@@ -2,7 +2,7 @@
 #include "InternalSession.h"
 #include "VoiceChatSharedDefines.h"
 
-InternalSession::InternalSession(tcp::socket&& socket) : TcpSocket(std::move(socket))
+InternalSession::InternalSession(IoContextTcpSocket&& socket) : TcpSocket(std::move(socket))
 {
     _headerBuffer.Resize(sizeof(VoiceChatServerPktHeader));
 }

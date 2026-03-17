@@ -20,7 +20,7 @@
 #include "Log.h"
 #include "VoiceChatSharedDefines.h"
 
-VoiceChatSocket::VoiceChatSocket(tcp::socket &&socket)
+VoiceChatSocket::VoiceChatSocket(IoContextTcpSocket&& socket)
     : TcpSocket<VoiceChatSocket>(std::move(socket)), _lastPacketReceiveTime(getMSTime())
 {
     _headerBuffer.Resize(sizeof(VoiceChatServerPktHeader));

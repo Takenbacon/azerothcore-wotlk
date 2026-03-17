@@ -55,7 +55,7 @@ public:
             _threads[i].Start();
     }
 
-    std::shared_ptr<VoiceChatSocket> OnSocketOpen(tcp::socket&& sock)
+    std::shared_ptr<VoiceChatSocket> OnSocketOpen(IoContextTcpSocket&& sock)
     {
         // set some options here
         if (_socketSystemSendBufferSize >= 0)
@@ -83,7 +83,7 @@ public:
             }
         }
 
-        return BaseSocketMgr::OnSocketOpen(std::forward<tcp::socket>(sock), 0);
+        return BaseSocketMgr::OnSocketOpen(std::move(sock), 0);
     }
 
 protected:

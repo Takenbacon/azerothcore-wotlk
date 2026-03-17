@@ -1,14 +1,14 @@
 /*
  * This file is part of the AzerothCore Project. See AUTHORS file for Copyright information
  *
- * This program is free software; you can redistribute it and/or modify it
- * under the terms of the GNU Affero General Public License as published by the
- * Free Software Foundation; either version 3 of the License, or (at your
- * option) any later version.
+ * This program is free software; you can redistribute it and/or modify
+ * it under the terms of the GNU General Public License as published by
+ * the Free Software Foundation; either version 2 of the License, or
+ * (at your option) any later version.
  *
  * This program is distributed in the hope that it will be useful, but WITHOUT
  * ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or
- * FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for
+ * FITNESS FOR A PARTICULAR PURPOSE. See the GNU General Public License for
  * more details.
  *
  * You should have received a copy of the GNU General Public License along
@@ -22,9 +22,8 @@
 #include "Log.h"
 #include "MessageBuffer.h"
 #include <atomic>
-#include <boost/asio.hpp>
+#include <boost/asio/io_context.hpp>
 #include <boost/asio/ip/tcp.hpp>
-#include <functional>
 #include <memory>
 #include <queue>
 #include <type_traits>
@@ -35,6 +34,23 @@ using boost::asio::ip::tcp;
 #ifdef BOOST_ASIO_HAS_IOCP
 #define AC_SOCKET_USE_IOCP
 #endif
+
+// Specialize boost socket for io_context executor instead of type-erased any_io_executor
+// This avoids the type-erasure overhead of any_io_executor
+using IoContextTcpSocket = boost::asio::basic_stream_socket<boost::asio::ip::tcp, boost::asio::io_context::executor_type>;
+
+enum class SocketReadCallbackResult
+{
+    KeepReading,
+    Stop
+};
+
+enum class SocketState : uint8
+{
+    Open = 0,
+    Closing = 1,
+    Closed = 2
+};
 
 enum ProxyHeaderReadingState {
     PROXY_HEADER_READING_STATE_NOT_STARTED,
@@ -59,8 +75,8 @@ template<class T>
 class TcpSocket : public std::enable_shared_from_this<T>
 {
 public:
-    explicit TcpSocket(tcp::socket&& socket) : _socket(std::move(socket)), _remoteAddress(_socket.remote_endpoint().address()),
-        _remotePort(_socket.remote_endpoint().port()), _readBuffer(), _closed(false), _closing(false), _isWritingAsync(false),
+    explicit TcpSocket(IoContextTcpSocket&& socket) : _socket(std::move(socket)), _remoteAddress(_socket.remote_endpoint().address()),
+        _remotePort(_socket.remote_endpoint().port()), _readBuffer(), _state(SocketState::Open), _isWritingAsync(false),
         _proxyHeaderReadingState(PROXY_HEADER_READING_STATE_NOT_STARTED)
     {
         _readBuffer.Resize(READ_BLOCK_SIZE);
@@ -68,7 +84,7 @@ public:
 
     virtual ~TcpSocket()
     {
-        _closed = true;
+        _state = SocketState::Closed;
         boost::system::error_code error;
         _socket.close(error);
     }
@@ -77,13 +93,14 @@ public:
 
     virtual bool Update()
     {
-        if (_closed)
+        SocketState state = _state.load();
+        if (state == SocketState::Closed)
         {
             return false;
         }
 
 #ifndef AC_SOCKET_USE_IOCP
-        if (_isWritingAsync || (_writeQueue.empty() && !_closing))
+        if (_isWritingAsync || (_writeQueue.empty() && state != SocketState::Closing))
         {
             return true;
         }
@@ -158,12 +175,18 @@ public:
 
     [[nodiscard]] ProxyHeaderReadingState GetProxyHeaderReadingState() const { return _proxyHeaderReadingState; }
 
-    [[nodiscard]] bool IsOpen() const { return !_closed && !_closing; }
+    [[nodiscard]] bool IsOpen() const { return _state.load() == SocketState::Open; }
 
     void CloseSocket()
     {
-        if (_closed.exchange(true))
-            return;
+        SocketState expected = SocketState::Open;
+        if (!_state.compare_exchange_strong(expected, SocketState::Closed))
+        {
+            // If it was Closing, try to transition to Closed
+            expected = SocketState::Closing;
+            if (!_state.compare_exchange_strong(expected, SocketState::Closed))
+                return; // Already closed
+        }
 
         boost::system::error_code shutdownError;
         _socket.shutdown(boost::asio::socket_base::shutdown_send, shutdownError);
@@ -186,7 +209,11 @@ public:
     }
 
     /// Marks the socket for closing after write buffer becomes empty
-    void DelayedCloseSocket() { _closing = true; }
+    void DelayedCloseSocket()
+    {
+        SocketState expected = SocketState::Open;
+        _state.compare_exchange_strong(expected, SocketState::Closing);
+    }
 
     MessageBuffer& GetReadBuffer() { return _readBuffer; }
 
@@ -195,10 +222,10 @@ protected:
     virtual bool ReadHeaderHandler() = 0;
     virtual ReadDataHandlerResult ReadDataHandler() = 0;
 
-    virtual void ReadHandler()
+    virtual SocketReadCallbackResult ReadHandler()
     {
         if (!IsOpen())
-            return;
+            return SocketReadCallbackResult::Stop;
 
         MessageBuffer& packet = GetReadBuffer();
         while (packet.GetActiveSize() > 0)
@@ -221,7 +248,7 @@ protected:
                 if (!ReadHeaderHandler())
                 {
                     CloseSocket();
-                    return;
+                    return SocketReadCallbackResult::Stop;
                 }
             }
 
@@ -250,11 +277,11 @@ protected:
                 if (result != ReadDataHandlerResult::WaitingForQuery)
                     CloseSocket();
 
-                return;
+                return SocketReadCallbackResult::Stop;
             }
         }
 
-        AsyncRead();
+        return SocketReadCallbackResult::KeepReading;
     }
 
     bool AsyncProcessQueue()
@@ -269,8 +296,10 @@ protected:
         _socket.async_write_some(boost::asio::buffer(buffer.GetReadPointer(), buffer.GetActiveSize()), std::bind(&TcpSocket<T>::WriteHandler,
             this->shared_from_this(), std::placeholders::_1, std::placeholders::_2));
 #else
-        _socket.async_write_some(boost::asio::null_buffers(), std::bind(&Socket<T>::WriteHandlerWrapper,
-            this->shared_from_this(), std::placeholders::_1, std::placeholders::_2));
+        _socket.async_wait(boost::asio::socket_base::wait_write, [self = this->shared_from_this()](boost::system::error_code error)
+        {
+            self->WriteHandlerWrapper(error, 0);
+        });
 #endif
         return false;
     }
@@ -288,7 +317,8 @@ private:
         }
 
         _readBuffer.WriteCompleted(transferredBytes);
-        ReadHandler();
+        if (ReadHandler() == SocketReadCallbackResult::KeepReading)
+            AsyncRead();
     }
 
     // ProxyReadHeaderHandler reads Proxy Protocol v2 header (v1 is not supported).
@@ -416,7 +446,7 @@ private:
 
             if (!_writeQueue.empty())
                 AsyncProcessQueue();
-            else if (_closing)
+            else if (_state.load() == SocketState::Closing)
                 CloseSocket();
         }
         else
@@ -452,7 +482,7 @@ private:
 
             _writeQueue.pop();
 
-            if (_closing && _writeQueue.empty())
+            if (_state.load() == SocketState::Closing && _writeQueue.empty())
             {
                 CloseSocket();
             }
@@ -463,7 +493,7 @@ private:
         {
             _writeQueue.pop();
 
-            if (_closing && _writeQueue.empty())
+            if (_state.load() == SocketState::Closing && _writeQueue.empty())
             {
                 CloseSocket();
             }
@@ -478,7 +508,7 @@ private:
 
         _writeQueue.pop();
 
-        if (_closing && _writeQueue.empty())
+        if (_state.load() == SocketState::Closing && _writeQueue.empty())
         {
             CloseSocket();
         }
@@ -487,7 +517,7 @@ private:
     }
 #endif
 
-    tcp::socket _socket;
+    IoContextTcpSocket _socket;
 
     boost::asio::ip::address _remoteAddress;
     uint16 _remotePort;
@@ -495,8 +525,7 @@ private:
     MessageBuffer _readBuffer;
     std::queue<MessageBuffer> _writeQueue;
 
-    std::atomic<bool> _closed;
-    std::atomic<bool> _closing;
+    std::atomic<SocketState> _state;
 
     bool _isWritingAsync;
 

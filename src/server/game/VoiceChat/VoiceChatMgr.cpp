@@ -150,7 +150,7 @@ void VoiceChatMgr::CreateVoiceSession(Channel* channel)
 }
 
 // Warning: Called from boost asio callback, not thread safe
-void VoiceServerConnector::OnConnectionSuccess(std::unique_ptr<tcp::socket> socket)
+void VoiceServerConnector::OnConnectionSuccess(std::unique_ptr<IoContextTcpSocket> socket)
 {
     std::shared_ptr<VoiceChatSocket> voiceSocket = sVoiceChatSocketMgr.OnSocketOpen(std::move(*socket));
     if (voiceSocket)
