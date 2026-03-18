@@ -34,6 +34,8 @@ public:
         return instance;
     }
 
+    VoiceServer();
+
     bool Start(Acore::Asio::IoContext& ioContext, std::string const& bindIp, uint16 const port);
     void Run();
 

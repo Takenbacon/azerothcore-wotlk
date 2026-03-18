@@ -18,7 +18,9 @@
 #ifndef __INTERNALHANDLER_H__
 #define __INTERNALHANDLER_H__
 
+#include "Errors.h"
 #include "VoiceChatSharedDefines.h"
+#include <memory>
 
 class InternalSession;
 
@@ -26,13 +28,13 @@ template<typename Server>
 class VoiceChatInternalOpcodeHandler
 {
 public:
-    VoiceChatInternalOpcodeHandler(char const* name, void (Server::* handler)(VoiceChatServerPacket const& packet))
+    VoiceChatInternalOpcodeHandler(char const* name, void (Server::* handler)(VoiceChatServerPacket& packet))
         : _name(name), _handler(handler) {
     }
     virtual ~VoiceChatInternalOpcodeHandler() = default;
 
     char const* _name;
-    void (Server::* _handler)(VoiceChatServerPacket const& packet);
+    void (Server::* _handler)(VoiceChatServerPacket& packet);
 };
 
 template<typename Server>
@@ -47,7 +49,7 @@ public:
     }
 
 private:
-    void SetInternalServerOpcodeHandler(VoiceChatServerOpcodes const opcode, char const* name, void (Server::* handler)(VoiceChatServerPacket const& packet))
+    void SetInternalServerOpcodeHandler(VoiceChatServerOpcodes const opcode, char const* name, void (Server::* handler)(VoiceChatServerPacket& packet))
     {
         // Not a valid opcode
         if (opcode == VoiceChatServerOpcodes::NULL_OPCODE || opcode == VoiceChatServerOpcodes::NUM_OPCODES)

@@ -1,4 +1,5 @@
 #include "ChannelMgr.h"
+#include "InternalHandler.h"
 #include "InternalSession.h"
 #include "VoiceChatSharedDefines.h"
 
@@ -57,16 +58,20 @@ ReadDataHandlerResult InternalSession::ReadDataHandler()
 
     LOG_TRACE("network", "Received opcode {} size {}", opcode, header->size);
 
+    // Note: opcode value is already sanity checked in ReadHeaderHandler
+    VoiceChatInternalOpcodeHandler<InternalSession> const* opHandle = internalVoiceChatOpcodeTable[opcode];
+    if (!opHandle)
+        return ReadDataHandlerResult::Error;
+
     VoiceChatServerPacket packet(opcode, std::move(_packetBuffer));
 
-    switch (opcode)
+    try
     {
-        case VoiceChatServerOpcodes::CMSG_PING:
-        {
-            VoiceChatServerPacket data(VoiceChatServerOpcodes::SMSG_PONG, 0);
-            SendPacket(data);
-            break;
-        }
+        (this->*opHandle->_handler)(packet);
+    }
+    catch (ByteBufferException const& ex)
+    {
+        return ReadDataHandlerResult::Error;
     }
 
     return ReadDataHandlerResult::Ok;
@@ -91,4 +96,16 @@ void InternalSession::SendPacket(VoiceChatServerPacket const& packet)
     QueuePacket(std::move(buffer));
 
     LOG_TRACE("network", "Sending opcode {} size {}", packet.GetOpcode(), packet.size());
+}
+
+void InternalSession::HandlePing(VoiceChatServerPacket& packet)
+{
+    VoiceChatServerPacket data(VoiceChatServerOpcodes::SMSG_PONG, 0);
+    SendPacket(data);
+}
+
+void InternalSession::HandleCreateVoiceSession(VoiceChatServerPacket& packet)
+{
+    uint32 channelId;
+    packet >> channelId;
 }

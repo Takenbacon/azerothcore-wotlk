@@ -39,6 +39,9 @@ public:
 
     void SendPacket(VoiceChatServerPacket const& packet);
 
+    void HandlePing(VoiceChatServerPacket& packet);
+    void HandleCreateVoiceSession(VoiceChatServerPacket& packet);
+
 protected:
     bool ReadHeaderHandler();
     ReadDataHandlerResult ReadDataHandler();

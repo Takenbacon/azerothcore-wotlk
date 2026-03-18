@@ -18,6 +18,8 @@
 #ifndef _VOICECHATSHAREDDEFINES_H
 #define _VOICECHATSHAREDDEFINES_H
 
+#include "ByteBuffer.h"
+#include <cstddef>
 #include <Define.h>
 
 enum class VoiceChatServerOpcodes : uint8

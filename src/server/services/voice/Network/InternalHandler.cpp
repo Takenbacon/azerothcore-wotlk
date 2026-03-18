@@ -26,7 +26,8 @@ void VoiceChatInternalOpcodeTable<InternalSession>::Init()
 #define DEFINE_INTERNAL_VOICECHAT_HANDLER(opcode, handler) \
     SetInternalServerOpcodeHandler(opcode, #opcode, handler)
 
-    //DEFINE_INTERNAL_VOICECHAT_HANDLER(VoiceChatServerOpcodes::SMSG_PONG, &VoiceChatMgr::HandlePongOpcode);
+    DEFINE_INTERNAL_VOICECHAT_HANDLER(VoiceChatServerOpcodes::CMSG_PING,                 &InternalSession::HandlePing);
+    DEFINE_INTERNAL_VOICECHAT_HANDLER(VoiceChatServerOpcodes::CMSG_CREATE_VOICE_SESSION, &InternalSession::HandleCreateVoiceSession);
 
 #undef DEFINE_INTERNAL_VOICECHAT_HANDLER
 }

@@ -1,4 +1,10 @@
+#include "InternalHandler.h"
 #include "VoiceServer.h"
+
+VoiceServer::VoiceServer()
+{
+    internalVoiceChatOpcodeTable.Init();
+}
 
 bool VoiceServer::Start(Acore::Asio::IoContext& ioContext, std::string const& bindIp, uint16 const port)
 {
