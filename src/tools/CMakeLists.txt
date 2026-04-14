@@ -132,13 +132,13 @@ foreach(TOOL_NAME ${TOOLS_BUILD_LIST})
 
     target_link_libraries(${TOOL_PROJECT_NAME}
     PRIVATE
-      acore-dependency-interface)
+      acore-dependency-interface
+      ZLIB::ZLIB)
 
     target_link_libraries(${TOOL_PROJECT_NAME}
       PUBLIC
         common
         mpq
-        zlib
         Recast
         g3dlib
         fkYAML)

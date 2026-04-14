@@ -31,7 +31,6 @@ if ((APPS_BUILD AND (NOT APPS_BUILD STREQUAL "none")) OR BUILD_TOOLS_DB_IMPORT)
 endif()
 
 if (BUILD_APPLICATION_WORLDSERVER OR BUILD_TOOLS_MAPS)
-  add_subdirectory(zlib)
   add_subdirectory(g3dlite)
   add_subdirectory(recastnavigation)
 endif()

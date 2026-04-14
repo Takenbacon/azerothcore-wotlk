@@ -23,12 +23,6 @@ set(Recast_STAT_SRCS
     Source/RecastRegion.cpp 
 )
 
-if(WIN32)
-  include_directories(
-    ${CMAKE_SOURCE_DIR}/deps/zlib
-  )
-endif()
-
 add_library(Recast STATIC ${Recast_STAT_SRCS})
 
 # Group sources
@@ -41,8 +35,7 @@ target_include_directories(Recast
 target_link_libraries(Recast
   PRIVATE
     acore-dependency-interface
-  PUBLIC
-    zlib)
+    ZLIB::ZLIB)
 
 set_target_properties(Recast
     PROPERTIES

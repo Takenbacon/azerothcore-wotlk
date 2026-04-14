@@ -19,12 +19,6 @@ set(Detour_STAT_SRCS
     Source/DetourNode.cpp 
 )
 
-if(WIN32)
-  include_directories(
-    ${CMAKE_SOURCE_DIR}/deps/zlib
-  )
-endif()
-
 add_library(Detour STATIC ${Detour_STAT_SRCS})
 
 target_include_directories(Detour
@@ -37,8 +31,7 @@ GroupSources(${CMAKE_CURRENT_SOURCE_DIR})
 target_link_libraries(Detour
   PRIVATE
     acore-dependency-interface
-  PUBLIC
-    zlib)
+    ZLIB::ZLIB)
 
 set_target_properties(Detour
     PROPERTIES

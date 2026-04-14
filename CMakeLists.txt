@@ -22,6 +22,27 @@ if (POLICY CMP0153)
   cmake_policy(SET CMP0153 OLD)
 endif()
 
+# Auto-detect vcpkg toolchain if not explicitly set
+if(NOT DEFINED CMAKE_TOOLCHAIN_FILE)
+  if(DEFINED ENV{VCPKG_ROOT})
+    set(CMAKE_TOOLCHAIN_FILE "$ENV{VCPKG_ROOT}/scripts/buildsystems/vcpkg.cmake"
+        CACHE STRING "")
+  elseif(EXISTS "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake")
+    set(CMAKE_TOOLCHAIN_FILE
+        "${CMAKE_SOURCE_DIR}/vcpkg/scripts/buildsystems/vcpkg.cmake"
+        CACHE STRING "")
+  endif()
+endif()
+
+# Must be before project()
+if(WIN32)
+    set(VCPKG_TARGET_TRIPLET "x64-windows-static" CACHE STRING "")
+elseif(APPLE)
+    set(VCPKG_TARGET_TRIPLET "x64-osx" CACHE STRING "")
+else()
+    set(VCPKG_TARGET_TRIPLET "x64-linux" CACHE STRING "")
+endif()
+
 # Set projectname (must be done AFTER setting configurationtypes)
 project(AzerothCore VERSION 3.0.0 LANGUAGES CXX C)
 
@@ -115,6 +136,8 @@ endif()
 if(NOT WITHOUT_GIT)
     find_package(Git)
 endif()
+
+find_package(ZLIB REQUIRED)
 
 # Find revision ID and hash of the sourcetree
 include(src/cmake/genrev.cmake)

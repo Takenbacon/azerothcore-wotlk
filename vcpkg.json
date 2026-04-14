@@ -1,0 +1,19 @@
+{
+  "name": "azerothcore",
+  "version": "0.0.1",
+  "dependencies": [
+    "zlib",
+	"fmt"
+  ],
+  "builtin-baseline": "77df67cfff9c12ccfdb52284e07c87c75092f723",
+  "overrides": [
+    { 
+      "name": "fmt", 
+      "version": "10.2.1"
+    }
+  ],
+  "configuration": {
+    "overlay-ports": [ "vcpkg-ports/fmt"
+    ]
+  }
+}

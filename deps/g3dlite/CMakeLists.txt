@@ -65,8 +65,8 @@ target_include_directories(g3dlib
 target_link_libraries(g3dlib
   PRIVATE
     acore-dependency-interface
+	ZLIB::ZLIB
   PUBLIC
-    zlib
     threads)
 
 set_target_properties(g3dlib
