@@ -35,9 +35,10 @@ void WorldSession::HandleChannelVoiceOnOpcode(WorldPackets::VoiceChat::ChannelVo
 {
     LOG_DEBUG("network", "WORLD: Received CMSG_CHANNEL_VOICE_ON");
 
-    if (ChannelMgr* cMgr = ChannelMgr::forTeam(GetPlayer()->GetTeamId()))
-        if (Channel* channel = cMgr->GetChannel(packet.ChannelName, GetPlayer()))
-            channel->VoiceOn(GetPlayer());
+    if (Channel* channel = sChannelMgr.GetChannel(GetPlayer()->GetTeamId(), packet.ChannelName))
+        channel->VoiceOn(GetPlayer());
+    else
+        ChannelMgr::SendNotOnPacket(GetPlayer(), packet.ChannelName);
 }
 
 void WorldSession::HandleSetActiveVoiceChannelOpcode(WorldPackets::VoiceChat::SetActiveVoiceChannel& packet)

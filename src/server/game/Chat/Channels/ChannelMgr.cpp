@@ -22,31 +22,6 @@
 #include "Tokenize.h"
 #include "World.h"
 
-ChannelMgr::~ChannelMgr()
-{
-    for (ChannelMap::iterator itr = channels.begin(); itr != channels.end(); ++itr)
-        delete itr->second;
-
-    channels.clear();
-}
-
-ChannelMgr* ChannelMgr::forTeam(TeamId teamId)
-{
-    static ChannelMgr allianceChannelMgr(TEAM_ALLIANCE);
-    static ChannelMgr hordeChannelMgr(TEAM_HORDE);
-
-    if (sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_CHANNEL))
-        return &allianceChannelMgr;        // cross-faction
-
-    if (teamId == TEAM_ALLIANCE)
-        return &allianceChannelMgr;
-
-    if (teamId == TEAM_HORDE)
-        return &hordeChannelMgr;
-
-    return nullptr;
-}
-
 void ChannelMgr::LoadChannels()
 {
     uint32 oldMSTime = getMSTime();
@@ -78,33 +53,37 @@ void ChannelMgr::LoadChannels()
             continue;
         }
 
-        ChannelMgr* mgr = forTeam(team);
-        if (!mgr)
+        if (team >= MAX_TEAMS)
         {
             LOG_ERROR("server.loading", "Failed to load custom chat channel '{}' from database - invalid team {}. Deleted.", channelName, team);
             toDelete.emplace_back(channelName, team);
             continue;
         }
 
-        Channel* newChannel = new Channel(channelName, 0, channelDBId, team, fields[3].Get<uint8>(), fields[4].Get<uint8>());
+        std::shared_ptr<Channel> newChannel = std::make_shared<Channel>(channelName, 0, channelDBId, team, fields[3].Get<uint8>(), fields[4].Get<uint8>());
         newChannel->SetPassword(password);
-        mgr->channels[channelWName] = newChannel;
+        _channelsByName[team][channelWName] = newChannel;
+        _channelsByGuid[channelDBId] = newChannel;
 
-        if (QueryResult banResult = CharacterDatabase.Query("SELECT playerGUID, banTime FROM channels_bans WHERE channelId = {}", channelDBId))
-        {
-            do
-            {
-                Field* banFields = banResult->Fetch();
-                if (!banFields)
-                    break;
-                newChannel->AddBan(ObjectGuid::Create<HighGuid::Player>(banFields[0].Get<uint32>()), banFields[1].Get<uint32>());
-            } while (banResult->NextRow());
-        }
+        if (channelDBId >= _nextChannelGuid)
+            _nextChannelGuid = channelDBId + 1;
 
-        if (channelDBId > ChannelMgr::_channelIdMax)
-            ChannelMgr::_channelIdMax = channelDBId;
         ++count;
     } while (result->NextRow());
+
+    if (QueryResult banResult = CharacterDatabase.Query("SELECT channelId, playerGUID, banTime FROM channels_bans"))
+    {
+        do
+        {
+            Field* banFields = banResult->Fetch();
+            if (!banFields)
+                break;
+
+            uint32 const channelId = banFields[0].Get<uint32>();
+            if (Channel* channel = GetChannel(channelId))
+                channel->AddBan(ObjectGuid::Create<HighGuid::Player>(banFields[1].Get<uint32>()), banFields[2].Get<uint32>());
+        } while (banResult->NextRow());
+    }
 
     for (auto& pair : toDelete)
     {
@@ -118,57 +97,64 @@ void ChannelMgr::LoadChannels()
     LOG_INFO("server.loading", " ");
 }
 
-Channel* ChannelMgr::GetJoinChannel(std::string const& name, uint32 channelId)
+Channel* ChannelMgr::GetOrCreateChannel(TeamId team, std::string const& name, uint32 channelDBCId)
 {
-    std::wstring wname;
-    Utf8toWStr(name, wname);
-    wstrToLower(wname);
-
-    ChannelMap::const_iterator i = channels.find(wname);
-
-    if (i == channels.end())
-    {
-        Channel* nchan = new Channel(name, channelId, 0, _teamId);
-        channels[wname] = nchan;
-        return nchan;
-    }
-
-    return i->second;
-}
-
-Channel* ChannelMgr::GetChannel(std::string const& name, Player* player, bool pkt)
-{
-    std::wstring wname;
-    Utf8toWStr(name, wname);
-    wstrToLower(wname);
-
-    ChannelMap::const_iterator i = channels.find(wname);
-
-    if (i == channels.end())
-    {
-        if (pkt)
-        {
-            WorldPacket data;
-            MakeNotOnPacket(&data, name);
-            player->SendDirectMessage(&data);
-        }
-
+    if (team >= MAX_TEAMS)
         return nullptr;
+
+    // Crossfaction handling, force TEAM_ALLIANCE
+    if (sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_CHANNEL))
+        team = TEAM_ALLIANCE;
+
+    std::wstring wname;
+    Utf8toWStr(name, wname);
+    wstrToLower(wname);
+
+    ChannelsByNameMap::const_iterator itr = _channelsByName[team].find(wname);
+    if (itr == _channelsByName[team].end())
+    {
+        std::shared_ptr<Channel> channel = std::make_shared<Channel>(name, channelDBCId, 0, team);
+        _channelsByName[team][wname] = channel;
+        return channel.get();
     }
 
-    return i->second;
+    return itr->second.get();
 }
 
-uint32 ChannelMgr::_channelIdMax = 0;
-ChannelMgr::ChannelRightsMap ChannelMgr::channels_rights;
-ChannelRights ChannelMgr::channelRightsEmpty;
+Channel* ChannelMgr::GetChannel(TeamId team, std::string const& name)
+{
+    if (team >= MAX_TEAMS)
+        return nullptr;
+
+    // Crossfaction handling, force TEAM_ALLIANCE
+    if (sWorld->getBoolConfig(CONFIG_ALLOW_TWO_SIDE_INTERACTION_CHANNEL))
+        team = TEAM_ALLIANCE;
+
+    std::wstring wname;
+    Utf8toWStr(name, wname);
+    wstrToLower(wname);
+
+    ChannelsByNameMap::const_iterator itr = _channelsByName[team].find(wname);
+    if (itr == _channelsByName[team].end())
+        return nullptr;
+
+    return itr->second.get();
+}
+
+Channel* ChannelMgr::GetChannel(uint64 channelId)
+{
+    ChannelsByGUIDMap::const_iterator itr = _channelsByGuid.find(channelId);
+    if (itr == _channelsByGuid.end())
+        return nullptr;
+
+    return itr->second.get();
+}
 
 void ChannelMgr::LoadChannelRights()
 {
     uint32 oldMSTime = getMSTime();
-    channels_rights.clear();
 
-    QueryResult result = CharacterDatabase.Query("SELECT name, flags, speakdelay, joinmessage, delaymessage, moderators FROM channels_rights");
+    QueryResult result = CharacterDatabase.Query("SELECT channelId, flags, speakdelay, joinmessage, delaymessage, moderators FROM channels_rights");
     if (!result)
     {
         LOG_WARN("server.loading", ">> Loaded 0 Channel Rights!");
@@ -180,24 +166,19 @@ void ChannelMgr::LoadChannelRights()
     do
     {
         Field* fields = result->Fetch();
+        std::string_view moderatorList = fields[5].Get<std::string_view>();
+        if (moderatorList.empty())
+            continue;
+
         std::set<uint32> moderators;
-        auto moderatorList = fields[5].Get<std::string_view>();
-
-        if (!moderatorList.empty())
+        for (auto const& itr : Acore::Tokenize(moderatorList, ' ', false))
         {
-            for (auto const& itr : Acore::Tokenize(moderatorList, ' ', false))
-            {
-                uint64 moderator_acc = Acore::StringTo<uint64>(itr).value_or(0);
-
-                if (moderator_acc && ((uint32)moderator_acc) == moderator_acc)
-                {
-                    moderators.insert((uint32)moderator_acc);
-                }
-            }
+            uint32 moderator_acc = Acore::StringTo<uint32>(itr).value_or(0);
+            if (moderator_acc)
+                moderators.insert(moderator_acc);
         }
 
-        SetChannelRightsFor(fields[0].Get<std::string>(), fields[1].Get<uint32>(), fields[2].Get<uint32>(), fields[3].Get<std::string>(), fields[4].Get<std::string>(), moderators);
-
+        SetChannelRightsFor(fields[0].Get<uint32>(), fields[1].Get<uint32>(), fields[2].Get<uint32>(), fields[3].Get<std::string>(), fields[4].Get<std::string>(), moderators);
         ++count;
     } while (result->NextRow());
 
@@ -205,25 +186,19 @@ void ChannelMgr::LoadChannelRights()
     LOG_INFO("server.loading", " ");
 }
 
-const ChannelRights& ChannelMgr::GetChannelRightsFor(const std::string& name)
+void ChannelMgr::SetChannelRightsFor(uint32 const channelId, uint32 const flags, uint32 const speakDelay, std::string const& joinmessage, std::string const& speakmessage, std::set<uint32> const& moderators)
 {
-    std::string nameStr = name;
-    std::transform(nameStr.begin(), nameStr.end(), nameStr.begin(), ::tolower);
-    ChannelRightsMap::const_iterator itr = channels_rights.find(nameStr);
-    if (itr != channels_rights.end())
-        return itr->second;
-    return channelRightsEmpty;
+    Channel* channel = GetChannel(channelId);
+    if (!channel)
+        return;
+
+    channel->SetChannelRights(ChannelRights(flags, speakDelay, joinmessage, speakmessage, moderators));
 }
 
-void ChannelMgr::SetChannelRightsFor(const std::string& name, const uint32& flags, const uint32& speakDelay, const std::string& joinmessage, const std::string& speakmessage, const std::set<uint32>& moderators)
+void ChannelMgr::SendNotOnPacket(Player* player, std::string const& channelName)
 {
-    std::string nameStr = name;
-    std::transform(nameStr.begin(), nameStr.end(), nameStr.begin(), ::tolower);
-    channels_rights[nameStr] = ChannelRights(flags, speakDelay, joinmessage, speakmessage, moderators);
-}
-
-void ChannelMgr::MakeNotOnPacket(WorldPacket* data, std::string const& name)
-{
-    data->Initialize(SMSG_CHANNEL_NOTIFY, 1 + name.size());
-    (*data) << uint8(5) << name;
+    WorldPacket pkt(SMSG_CHANNEL_NOTIFY, 1 + channelName.size() + 1);
+    pkt << uint8(CHAT_NOT_MEMBER_NOTICE);
+    pkt << channelName;
+    player->SendDirectMessage(&pkt);
 }

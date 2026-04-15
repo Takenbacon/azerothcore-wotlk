@@ -997,11 +997,11 @@ void World::SetInitialWorldSettings()
     LOG_INFO("server.loading", "Load Stored Loot Items...");
     sLootItemStorage->LoadStorageFromDB();
 
-    LOG_INFO("server.loading", "Load Channel Rights...");
-    ChannelMgr::LoadChannelRights();
-
     LOG_INFO("server.loading", "Load Channels...");
-    ChannelMgr::LoadChannels();
+    sChannelMgr.LoadChannels();
+
+    LOG_INFO("server.loading", "Load Channel Rights...");
+    sChannelMgr.LoadChannelRights();
 
     LOG_INFO("server.loading", "Loading AntiDos opcode policies");
     sWorldGlobals->LoadAntiDosOpcodePolicies();

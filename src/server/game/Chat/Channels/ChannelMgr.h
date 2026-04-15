@@ -19,44 +19,48 @@
 #define __ACORE_CHANNELMGR_H
 
 #include "Channel.h"
-#include "World.h"
-#include <map>
+#include <memory>
 #include <string>
 
+class Player;
+
+#define MAX_CHANNEL_NAME_STR 100
 #define MAX_CHANNEL_PASS_STR 31
 
 class ChannelMgr
 {
-    typedef std::unordered_map<std::wstring, Channel*> ChannelMap;
-    typedef std::map<std::string, ChannelRights> ChannelRightsMap;
+    typedef std::unordered_map<std::wstring, std::shared_ptr<Channel>> ChannelsByNameMap;
+    typedef std::unordered_map<uint64, std::shared_ptr<Channel>> ChannelsByGUIDMap;
 
 public:
-    ChannelMgr(TeamId teamId) : _teamId(teamId)
-    { }
+    static ChannelMgr& Instance()
+    {
+        static ChannelMgr instance;
+        return instance;
+    }
 
-    ~ChannelMgr();
+    ChannelMgr() : _nextChannelGuid(1) { }
+    ~ChannelMgr() { }
 
-    static ChannelMgr* forTeam(TeamId teamId);
+    Channel* GetOrCreateChannel(TeamId team, std::string const& name, uint32 channelDBCId);
+    Channel* GetChannel(TeamId team, std::string const& name);
+    Channel* GetChannel(uint64 channelId);
 
-    Channel* GetJoinChannel(std::string const& name, uint32 channelId);
-    Channel* GetChannel(std::string const& name, Player* p, bool pkt = true);
-    static void LoadChannels();
+    void LoadChannels();
+    void LoadChannelRights();
+    void SetChannelRightsFor(uint32 const channelId, uint32 const flags, uint32 const speakDelay, std::string const& joinmessage, std::string const& speakmessage, std::set<uint32> const& moderators);
 
-    static void LoadChannelRights();
-    static const ChannelRights& GetChannelRightsFor(const std::string& name);
-    static void SetChannelRightsFor(const std::string& name, const uint32& flags, const uint32& speakDelay, const std::string& joinmessage, const std::string& speakmessage, const std::set<uint32>& moderators);
-    static uint32 _channelIdMax;
+    uint64 const GetNextChannelGuid() { return ++_nextChannelGuid; }
+
+    static void SendNotOnPacket(Player* player, std::string const& channelName);
 
 private:
-    ChannelMap channels;
-    TeamId _teamId;
-    static ChannelRightsMap channels_rights;
-    static ChannelRights channelRightsEmpty; // when not found in the map, reference to this is returned
+    ChannelsByNameMap _channelsByName[MAX_TEAMS];
+    ChannelsByGUIDMap _channelsByGuid;
 
-    void MakeNotOnPacket(WorldPacket* data, std::string const& name);
+    uint64 _nextChannelGuid;
 };
 
-class AllianceChannelMgr : public ChannelMgr { public: AllianceChannelMgr() : ChannelMgr(TEAM_ALLIANCE) {} };
-class HordeChannelMgr    : public ChannelMgr { public: HordeChannelMgr() : ChannelMgr(TEAM_HORDE) {} };
+#define sChannelMgr ChannelMgr::Instance()
 
 #endif

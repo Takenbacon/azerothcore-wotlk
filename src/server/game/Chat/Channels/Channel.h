@@ -202,7 +202,7 @@ class Channel
     };
 
 public:
-    Channel(std::string const& name, uint32 channelId, uint32 channelDBId, TeamId teamId = TEAM_NEUTRAL, bool announce = true, bool ownership = true);
+    Channel(std::string const& name, uint32 channelDBCId, uint64 channelGuid, TeamId teamId = TEAM_NEUTRAL, bool announce = true, bool ownership = true);
     Channel(VoiceChatChannelType voiceChannelType);
     [[nodiscard]] std::string const& GetName() const { return _name; }
     [[nodiscard]] uint32 GetChannelId() const { return _channelId; }
@@ -257,7 +257,10 @@ public:
     bool IsVoiceEnabled() const { return HasFlag(CHANNEL_FLAG_VOICE); }
     void ToggleVoice(Player* player = nullptr); // remove
     void VoiceOn(Player* player);
+    void SendVoiceRoster();
     void AddVoiceChatMembersAfterCreate();
+
+    void SetChannelRights(ChannelRights&& channelRights);
 
     uint16 GetVoiceId() const { return _voiceId; }
 private:
@@ -345,7 +348,7 @@ private:
     bool _isOwnerGM;
     uint8 _flags;
     uint32 _channelId;
-    uint32 _channelDBId;
+    uint64 _channelDBId;
     TeamId _teamId;
     ObjectGuid _ownerGUID;
     std::string _name;

@@ -108,4 +108,6 @@ void InternalSession::HandleCreateVoiceSession(VoiceChatServerPacket& packet)
 {
     uint32 channelId;
     packet >> channelId;
+
+
 }

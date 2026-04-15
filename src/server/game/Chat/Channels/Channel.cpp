@@ -28,15 +28,15 @@
 #include "World.h"
 
 // Text-channel (can be converted to voice as well)
-Channel::Channel(std::string const& name, uint32 channelId, uint32 channelDBId, TeamId teamId, bool announce, bool ownership):
+Channel::Channel(std::string const& name, uint32 channelDBCId, uint64 channelGuid, TeamId teamId, bool announce, bool ownership):
     _announce(announce),
     _moderation(false),
     _ownership(ownership),
     _IsSaved(false),
     _isOwnerGM(false),
     _flags(0),
-    _channelId(channelId),
-    _channelDBId(channelDBId),
+    _channelId(channelDBCId),
+    _channelDBId(channelGuid),
     _teamId(teamId),
     _name(name),
     _voiceId(0),
@@ -44,7 +44,7 @@ Channel::Channel(std::string const& name, uint32 channelId, uint32 channelDBId, 
     _voiceType(VoiceChatChannelType::Custom)
 {
     // set special flags if built-in channel
-    if (ChatChannelsEntry const* ch = sChatChannelsStore.LookupEntry(channelId)) // check whether it's a built-in channel
+    if (ChatChannelsEntry const* ch = sChatChannelsStore.LookupEntry(channelDBCId)) // check whether it's a built-in channel
     {
         _announce = false;                                 // no join/leave announces
         _ownership = false;                                // no ownership handout
@@ -65,29 +65,17 @@ Channel::Channel(std::string const& name, uint32 channelId, uint32 channelDBId, 
     else                                                    // it's custom channel
     {
         _flags |= CHANNEL_FLAG_CUSTOM;
-
-        // pussywizard:
-        _channelRights = ChannelMgr::GetChannelRightsFor(_name);
-        if (_channelRights.flags & CHANNEL_RIGHT_FORCE_NO_ANNOUNCEMENTS)
-            _announce = false;
-        if (_channelRights.flags & CHANNEL_RIGHT_FORCE_ANNOUNCEMENTS)
-            _announce = true;
-        if (_channelRights.flags & CHANNEL_RIGHT_NO_OWNERSHIP)
-            _ownership = false;
-        if (_channelRights.flags & CHANNEL_RIGHT_DONT_PRESERVE)
-            return;
-
         _IsSaved = true;
 
         // Xinef: loading
-        if (channelDBId > 0)
+        if (channelGuid > 0)
             return;
+
+        _channelDBId = sChannelMgr.GetNextChannelGuid();
 
         // If storing custom channels in the db is enabled either load or save the channel
         if (sWorld->getBoolConfig(CONFIG_PRESERVE_CUSTOM_CHANNELS))
         {
-            _channelDBId = ++ChannelMgr::_channelIdMax;
-
             CharacterDatabasePreparedStatement* stmt = CharacterDatabase.GetPreparedStatement(CHAR_INS_CHANNEL);
             stmt->SetData(0, _channelDBId);
             stmt->SetData(1, name);
@@ -170,6 +158,9 @@ void Channel::CleanOldChannelsInDB()
         trans->Append(stmt);
 
         stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_OLD_CHANNELS_BANS);
+        trans->Append(stmt);
+
+        stmt = CharacterDatabase.GetPreparedStatement(CHAR_DEL_OLD_CHANNELS_RIGHTS);
         trans->Append(stmt);
 
         CharacterDatabase.CommitTransaction(trans);
@@ -729,6 +720,18 @@ void Channel::AddVoiceChatMembersAfterCreate()
     //        sVoiceChatMgr.AddToCustomVoiceChatChannel(playerStore.second.plrPtr->GetGUID(), this->GetName(), playerStore.second.plrPtr->GetTeamId());
 }
 
+void Channel::SetChannelRights(ChannelRights&& channelRights)
+{
+    _channelRights = std::move(channelRights);
+
+    if (_channelRights.flags & CHANNEL_RIGHT_FORCE_NO_ANNOUNCEMENTS)
+        _announce = false;
+    if (_channelRights.flags & CHANNEL_RIGHT_FORCE_ANNOUNCEMENTS)
+        _announce = true;
+    if (_channelRights.flags & CHANNEL_RIGHT_NO_OWNERSHIP)
+        _ownership = false;
+}
+
 void Channel::ToggleVoice(Player* player)
 {
     // silently disable if voice server disconnected
@@ -815,6 +818,14 @@ void Channel::VoiceOn(Player* player)
     _voiceType = VoiceChatChannelType::Custom;
 
     sVoiceChatMgr->CreateVoiceSession(this);
+}
+
+void Channel::SendVoiceRoster()
+{
+    /*WorldPacket data(SMSG_VOICE_SESSION_ROSTER_UPDATE, 31 + (_members.size() * 11)); // @todo: modern packet class
+    data << uint64(_voiceId); // Most likely groupId, not voiceId
+    data << uint16(_channelId); // voiceId
+    data << uint8(_voiceType);*/ // Type
 }
 
 void Channel::List(Player const* player, bool display)
